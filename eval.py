@@ -216,7 +216,7 @@ def main(argv=None):
 
                     with open(res_file, 'w') as f:
                         num =0
-                        for i in xrange(len(boxes)):
+                        for i in range(len(boxes)):
                             # to avoid submitting errors
                             box = boxes[i]
                             if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
