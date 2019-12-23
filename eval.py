@@ -201,6 +201,8 @@ def main(argv=None):
                 #     f.write(chrome_trace)
                 #TODO 转换出预测框！！！ pse算法后处理
                 boxes, kernels, timer = detect(seg_maps=seg_maps, timer=timer, image_w=w, image_h=h)
+                print("pse后box：",boxes)
+
                 logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
                     im_fn, timer['net']*1000, timer['pse']*1000))
                 #TODO!!!
@@ -214,7 +216,7 @@ def main(argv=None):
 
                 duration = time.time() - start_time
                 logger.info('[timing] {}'.format(duration))
-
+                #TODO
                 # save to file
                 if boxes is not None:
                     res_file = os.path.join(
@@ -228,6 +230,7 @@ def main(argv=None):
                         for i in range(len(boxes)):
                             # to avoid submitting errors
                             box = boxes[i]
+                            print("预测box：",box)
                             if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
                                 continue
 
