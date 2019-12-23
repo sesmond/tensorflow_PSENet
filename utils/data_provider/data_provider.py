@@ -247,10 +247,10 @@ def shrink_poly(poly, r):
             #TODO 什么逻辑？ 这个没搞明白
             poly_s = pco.Execute(-d)
         # print("原框：",poly)
-        print("缩小倍数：",r)
-        print("返回结果：",poly_s[0])
+        # print("缩小倍数：",r)
+        # print("返回结果：",poly_s[0])
         shrinked_bbox = np.array(poly_s[0])
-        print("缩放后点个数:",shrinked_bbox.shape[0])
+        # print("缩放后点个数:",shrinked_bbox.shape[0])
         #TODO 这里如果不是6个怎么办？
         return [poly_s[0]]
         #TODO 可能前面的坐标转换有问题
@@ -297,7 +297,7 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
             shrinked_polys = []
             if poly_idx not in ignore_poly_mark:
                 #收缩原框，返回缩小后的小框
-                # TODO 这里缩小框点个数有可能确定，而且一个框可能拆成多个框
+                # TODO 这里缩小框点个数有可能不确定，而且一个框可能拆成多个框
                 shrinked_polys = shrink_poly(poly.copy(), scale_ratio[i])
             #
             if not len(shrinked_polys) and poly_idx not in ignore_poly_mark:
@@ -309,14 +309,10 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
                 continue
             #TODO !!! 这里可能是多点坐标
             for shrinked_poly in shrinked_polys:
-                # plt.imshow(seg_map)
-                # plt.show()
-                # print("收缩后多边形：",shrinked_poly)
                 #TODO color1 是黑色？
                 # 看看是不是这个填充的问题，先画框试试
                 seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
                 # seg_map = cv2.drawContours(seg_map, [np.array(shrinked_poly).astype(np.int32)], -1, 1, -1)
-                # seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
                 # plt.imshow(seg_map)
                 # plt.show()
         #TODO (h,w,6) 生成6张图
@@ -368,7 +364,7 @@ def generator(input_size=512, batch_size=2,
                 # txt_fn = os.path.join(os.path.dirname(im_fn),'')
 
                 txt_fn =  FLAGS.training_text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
-                print("读取文本：",txt_fn)
+                # print("读取文本：",txt_fn)
                 # 后缀名jpg 换成txt找标注
                 if not os.path.exists(txt_fn):
                     continue
@@ -441,6 +437,7 @@ def generator(input_size=512, batch_size=2,
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
+                    print("获取样本数：",len(images))
                     #TODO 返回4个值
                     yield images, image_fns, seg_maps,  training_masks
                     images = []
@@ -456,36 +453,35 @@ def debug_show(vis, im, seg_map_per_image, training_mask):
     """
         debug 调试时显示照片
     """
-    if vis:
         # debug调试用的 原图 6张图 &掩码图
-        fig, axs = plt.subplots(3, 3, figsize=(20, 30))
-        axs[0, 0].imshow(im[..., ::-1])
-        axs[0, 0].set_xticks([])
-        axs[0, 0].set_yticks([])
-        axs[0, 1].imshow(seg_map_per_image[..., 0])
-        axs[0, 1].set_xticks([])
-        axs[0, 1].set_yticks([])
-        axs[0, 2].imshow(seg_map_per_image[..., 1])
-        axs[0, 2].set_xticks([])
-        axs[0, 2].set_yticks([])
-        axs[1, 0].imshow(seg_map_per_image[..., 2])
-        axs[1, 0].set_xticks([])
-        axs[1, 0].set_yticks([])
-        axs[1, 1].imshow(seg_map_per_image[..., 3])
-        axs[1, 1].set_xticks([])
-        axs[1, 1].set_yticks([])
-        axs[1, 2].imshow(seg_map_per_image[..., 4])
-        axs[1, 2].set_xticks([])
-        axs[1, 2].set_yticks([])
-        axs[2, 0].imshow(seg_map_per_image[..., 5])
-        axs[2, 0].set_xticks([])
-        axs[2, 0].set_yticks([])
-        axs[2, 1].imshow(training_mask)
-        axs[2, 1].set_xticks([])
-        axs[2, 1].set_yticks([])
-        plt.tight_layout()
-        plt.show()
-        plt.close()
+        # fig, axs = plt.subplots(3, 3, figsize=(20, 30))
+        # axs[0, 0].imshow(im[..., ::-1])
+        # axs[0, 0].set_xticks([])
+        # axs[0, 0].set_yticks([])
+        # axs[0, 1].imshow(seg_map_per_image[..., 0])
+        # axs[0, 1].set_xticks([])
+        # axs[0, 1].set_yticks([])
+        # axs[0, 2].imshow(seg_map_per_image[..., 1])
+        # axs[0, 2].set_xticks([])
+        # axs[0, 2].set_yticks([])
+        # axs[1, 0].imshow(seg_map_per_image[..., 2])
+        # axs[1, 0].set_xticks([])
+        # axs[1, 0].set_yticks([])
+        # axs[1, 1].imshow(seg_map_per_image[..., 3])
+        # axs[1, 1].set_xticks([])
+        # axs[1, 1].set_yticks([])
+        # axs[1, 2].imshow(seg_map_per_image[..., 4])
+        # axs[1, 2].set_xticks([])
+        # axs[1, 2].set_yticks([])
+        # axs[2, 0].imshow(seg_map_per_image[..., 5])
+        # axs[2, 0].set_xticks([])
+        # axs[2, 0].set_yticks([])
+        # axs[2, 1].imshow(training_mask)
+        # axs[2, 1].set_xticks([])
+        # axs[2, 1].set_yticks([])
+        # plt.tight_layout()
+        # plt.show()
+        # plt.close()
 
 
 def get_batch(num_workers, **kwargs):
