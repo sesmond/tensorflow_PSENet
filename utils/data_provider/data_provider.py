@@ -12,15 +12,17 @@ from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
-image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
+# image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
 text_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_label_curve/'
 # image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
 # text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
 
 
 #TODO 设成啥
-tf.app.flags.DEFINE_string('training_data_path', image_path,
+tf.app.flags.DEFINE_string('training_data_path', None,
                            'training dataset to use')
+tf.app.flags.DEFINE_string('training_text_path', None,
+                           'training text box to use')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
 tf.app.flags.DEFINE_integer('max_text_size', 800,
@@ -364,7 +366,8 @@ def generator(input_size=512, batch_size=2,
                 #TODO 文本路径
                 # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
                 # txt_fn = os.path.join(os.path.dirname(im_fn),'')
-                txt_fn = text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
+
+                txt_fn =  FLAGS.training_text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
                 print("读取文本：",txt_fn)
                 # 后缀名jpg 换成txt找标注
                 if not os.path.exists(txt_fn):
