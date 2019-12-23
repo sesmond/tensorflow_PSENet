@@ -10,15 +10,18 @@ if subprocess.call(['make', '-C', BASE_DIR]) != 0:  # return value
 
 def pse(kernals, min_area=5):
     '''
-    :param kernals:
-    :param min_area:
+    :param kernals: 二分后的图像
+    :param min_area: 保留的最小面积
     :return:
     '''
+    print("引入之前：",kernals,min_area)
+    #TODO 找不到指定模块？
     from .pse import pse_cpp
     kernal_num = len(kernals)
     if not kernal_num:
         return np.array([]), []
     kernals = np.array(kernals)
+    #TODO
     label_num, label = cv2.connectedComponents(kernals[kernal_num - 1].astype(np.uint8), connectivity=4)
     label_values = []
     for label_idx in range(1, label_num):
@@ -26,7 +29,8 @@ def pse(kernals, min_area=5):
             label[label == label_idx] = 0
             continue
         label_values.append(label_idx)
-
+    #TODO 最重要！！！
+    print("label:",label)
     pred = pse_cpp(label, kernals, c=6)
 
     return pred, label_values

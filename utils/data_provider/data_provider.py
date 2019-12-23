@@ -6,14 +6,20 @@ import json
 import csv
 import traceback
 import cv2
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
+image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
+text_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_label_curve/'
+# image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
+# text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
 
-tf.app.flags.DEFINE_string('training_data_path', None,
+
+#TODO 设成啥
+tf.app.flags.DEFINE_string('training_data_path', image_path,
                            'training dataset to use')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
@@ -30,8 +36,15 @@ FLAGS = tf.app.flags.FLAGS
 
 
 def get_files(exts):
+    '''
+    获取后缀名为exts的所有文件
+    TODO 路径training_data_path 没做参数也没校验
+    :param exts:
+    :return:
+    '''
     files = []
     for ext in exts:
+        # glob.glob 得到所有文件名
         files.extend(glob.glob(
             os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
     return files
@@ -51,6 +64,7 @@ def get_json_label():
 def load_annoataion(p):
     '''
     load annotation from the text file
+    # 从标注文件中读取 坐标
     :param p:
     :return:
     '''
@@ -61,18 +75,49 @@ def load_annoataion(p):
     with open(p, 'r') as f:
         reader = csv.reader(f)
         for line in reader:
-            label = line[-1]
             # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
             line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
-
-            x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
-            text_polys.append([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])
-            #TODO:maybe add '?' for icpr2018 (michael)
-            if label == '*' or label == '###' or label == '?':
-                text_tags.append(True)
+            #TODO ctw 样本
+            if True:
+                temp_poly,temp_tag = load_bboxes_ctw(line)
             else:
-                text_tags.append(False)
+                temp_poly, temp_tag = load_bboxes_icdar2015(line)
+            text_polys.append(temp_poly)
+            text_tags.append(temp_tag)
         return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
+
+
+def load_bboxes_icdar2015(line):
+    """
+        icadr 2015样本 4点坐标
+    :param line:
+    :return:
+    """
+    label = line[-1]
+    # x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
+    # text_polys.append([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])
+    temp_poly = []
+    for idx in range(0, len(line) - 1, 2):
+        temp_poly.append([float(line[idx]), float(line[idx + 1])])
+    if label == '*' or label == '###' or label == '?':
+        tag = True
+    else:
+        tag = False
+    return temp_poly,tag
+
+def load_bboxes_ctw(line):
+    gt = line
+    x1 = np.int(gt[0])
+    y1 = np.int(gt[1])
+    #TODO 前4项是矩形两点坐标
+    bbox = [np.int(gt[i]) for i in range(4, 32)]
+    #TODO  坐标相对位置
+    bbox = np.array(bbox) + np.array(([x1 * 1.0, y1 * 1.0] * 14))
+    new_box = []
+    for idx in range(0, len(bbox) - 1, 2):
+        new_box.append([float(bbox[idx]), float(bbox[idx + 1])])
+
+    return np.array(new_box), False
 
 def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     '''
@@ -82,6 +127,7 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     :param tags:
     :return:
     '''
+    # 调整为顺时针方向 从左下开始？TODO 待细看
     (h, w) = xxx_todo_changeme
     if polys.shape[0] == 0:
         return [], []
@@ -90,6 +136,7 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
 
     validated_polys = []
     validated_tags = []
+    #TODO !!
     for poly, tag in zip(polys, tags):
         if abs(pyclipper.Area(poly))<1:
             continue
@@ -165,6 +212,7 @@ def crop_area(im, polys, tags, crop_background=False, max_tries=50):
     return im, polys, tags
 
 def perimeter(poly):
+    #TODO ?这是什么 周长
     try:
         p=0
         nums = poly.shape[0]
@@ -177,16 +225,34 @@ def perimeter(poly):
         raise e
 
 def shrink_poly(poly, r):
+    """
+        收缩多边形
+    :param poly: 多边形
+    :param r: 收缩比例
+    :return:
+    """
+    #TODO debug调试 TODO 这里四点坐标有问题
     try:
         area_poly = abs(pyclipper.Area(poly))
         perimeter_poly = perimeter(poly)
         poly_s = []
         pco = pyclipper.PyclipperOffset()
         if perimeter_poly:
-            d=area_poly*(1-r*r)/perimeter_poly
+            d = area_poly*(1-r*r)/perimeter_poly
+            # offset = min((int)(area * (1 - rate) / (peri + 0.001) + 0.5), max_shr)
+
             pco.AddPath(poly, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
+            #TODO 什么逻辑？ 这个没搞明白
             poly_s = pco.Execute(-d)
-        return poly_s
+        # print("原框：",poly)
+        print("缩小倍数：",r)
+        print("返回结果：",poly_s[0])
+        shrinked_bbox = np.array(poly_s[0])
+        print("缩放后点个数:",shrinked_bbox.shape[0])
+        #TODO 这里如果不是6个怎么办？
+        return [poly_s[0]]
+        #TODO 可能前面的坐标转换有问题
+        # return [poly]
     except Exception as e:
         traceback.print_exc()
         raise e
@@ -203,28 +269,35 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
     seg_maps: segmentation results with different scale ratio, save in different channel
     training_mask: ignore text regions
     '''
+    #TODO 一张生成6张seomap
     h, w = im_size
-    #mark different text poly
+    #mark different text poly 最终输出6张
     seg_maps = np.zeros((h,w,6), dtype=np.uint8)
     # mask used during traning, to ignore some hard areas
     training_mask = np.ones((h, w), dtype=np.uint8)
     ignore_poly_mark = []
     for i in range(len(scale_ratio)):
         seg_map = np.zeros((h,w), dtype=np.uint8)
+        #TODO 看下14点坐标是否适配
         for poly_idx, poly_tag in enumerate(zip(polys, tags)):
+            # 对每个多边形操作
             poly = poly_tag[0]
             tag = poly_tag[1]
 
             # ignore ###
             if i == 0 and tag:
+                #TODO
                 cv2.fillPoly(training_mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
+                #TODO
                 ignore_poly_mark.append(poly_idx)
 
             # seg map
             shrinked_polys = []
             if poly_idx not in ignore_poly_mark:
+                #收缩原框，返回缩小后的小框
+                # TODO 这里缩小框点个数有可能确定，而且一个框可能拆成多个框
                 shrinked_polys = shrink_poly(poly.copy(), scale_ratio[i])
-
+            #
             if not len(shrinked_polys) and poly_idx not in ignore_poly_mark:
                 logger.info("before shrink poly area:{} len(shrinked_poly) is 0,image {}".format(
                     abs(pyclipper.Area(poly)),image_name))
@@ -232,14 +305,24 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
                 cv2.fillPoly(training_mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
                 ignore_poly_mark.append(poly_idx)
                 continue
+            #TODO !!! 这里可能是多点坐标
             for shrinked_poly in shrinked_polys:
+                # plt.imshow(seg_map)
+                # plt.show()
+                # print("收缩后多边形：",shrinked_poly)
+                #TODO color1 是黑色？
+                # 看看是不是这个填充的问题，先画框试试
                 seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
-
+                # seg_map = cv2.drawContours(seg_map, [np.array(shrinked_poly).astype(np.int32)], -1, 1, -1)
+                # seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
+                # plt.imshow(seg_map)
+                # plt.show()
+        #TODO (h,w,6) 生成6张图
         seg_maps[..., i] = seg_map
     return seg_maps, training_mask
 
-
-def generator(input_size=512, batch_size=32,
+#TODO batch size =32
+def generator(input_size=512, batch_size=2,
               background_ratio=3./8,
               random_scale=np.array([0.125, 0.25,0.5, 1, 2.0, 3.0]),
               vis=False,
@@ -254,13 +337,17 @@ def generator(input_size=512, batch_size=32,
     :param scale_ratio:ground truth scale ratio
     :return:
     '''
+    #TODO 样本解析为需要的格式
+    #参与训练的所有图片名
     image_list = np.array(get_files(['jpg', 'png', 'jpeg', 'JPG']))
 
     logger.info('{} training images in {}'.format(
         image_list.shape[0], FLAGS.training_data_path))
+    # 索引数组
     index = np.arange(0, image_list.shape[0])
 
     while True:
+        # 随机排序
         np.random.shuffle(index)
         images = []
         image_fns = []
@@ -271,23 +358,32 @@ def generator(input_size=512, batch_size=32,
                 im_fn = image_list[i]
                 im = cv2.imread(im_fn)
                 if im is None:
-                    logger.info(im_fn)
+                    logger.info("图像没有找到：%s",im_fn)
+                    continue
                 h, w, _ = im.shape
-                txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
+                #TODO 文本路径
+                # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
+                # txt_fn = os.path.join(os.path.dirname(im_fn),'')
+                txt_fn = text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
+                print("读取文本：",txt_fn)
+                # 后缀名jpg 换成txt找标注
                 if not os.path.exists(txt_fn):
                     continue
-
+                #text_tags 是否是文本 True False TODO
                 text_polys, text_tags = load_annoataion(txt_fn)
+                #按原样读取
                 if text_polys.shape[0] == 0:
                     continue
+                #TODO
                 text_polys, text_tags = check_and_validate_polys(text_polys, text_tags, (h, w))
-
+                #TODO 这是要缩放图片吗？是为了放大字体营造样本多样性？
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale)
                 text_polys *= rd_scale
                 # random crop a area from image
                 if np.random.rand() < background_ratio:
+                    #TODO 是不是造负样本？
                     # crop background
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     if text_polys.shape[0] > 0:
@@ -323,48 +419,26 @@ def generator(input_size=512, batch_size=32,
                     text_polys[:, :, 0] *= resize_ratio_3_x
                     text_polys[:, :, 1] *= resize_ratio_3_y
                     new_h, new_w, _ = im.shape
+                    # plt.imshow(im)
+                    # plt.show()
+                    # #TODO
                     seg_map_per_image, training_mask = generate_seg((new_h, new_w), text_polys, text_tags,
                                                                      image_list[i], scale_ratio)
                     if not len(seg_map_per_image):
                         logger.info("len(seg_map)==0 image: %d " % i)
                         continue
+                #DEBUG
+                debug_show(vis, im, seg_map_per_image, training_mask)
 
-                if vis:
-                    fig, axs = plt.subplots(3, 3, figsize=(20, 30))
-                    axs[0, 0].imshow(im[..., ::-1])
-                    axs[0, 0].set_xticks([])
-                    axs[0, 0].set_yticks([])
-                    axs[0, 1].imshow(seg_map_per_image[..., 0])
-                    axs[0, 1].set_xticks([])
-                    axs[0, 1].set_yticks([])
-                    axs[0, 2].imshow(seg_map_per_image[..., 1])
-                    axs[0, 2].set_xticks([])
-                    axs[0, 2].set_yticks([])
-                    axs[1, 0].imshow(seg_map_per_image[..., 2])
-                    axs[1, 0].set_xticks([])
-                    axs[1, 0].set_yticks([])
-                    axs[1, 1].imshow(seg_map_per_image[..., 3])
-                    axs[1, 1].set_xticks([])
-                    axs[1, 1].set_yticks([])
-                    axs[1, 2].imshow(seg_map_per_image[..., 4])
-                    axs[1, 2].set_xticks([])
-                    axs[1, 2].set_yticks([])
-                    axs[2, 0].imshow(seg_map_per_image[..., 5])
-                    axs[2, 0].set_xticks([])
-                    axs[2, 0].set_yticks([])
-                    axs[2, 1].imshow(training_mask)
-                    axs[2, 1].set_xticks([])
-                    axs[2, 1].set_yticks([])
-                    plt.tight_layout()
-                    plt.show()
-                    plt.close()
-
+                #TODO 单通道？
                 images.append(im[..., ::-1].astype(np.float32))
                 image_fns.append(im_fn)
+                #TODO 这是什么意思？
                 seg_maps.append(seg_map_per_image[::4, ::4, :].astype(np.float32))
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
+                    #TODO 返回4个值
                     yield images, image_fns, seg_maps,  training_masks
                     images = []
                     image_fns = []
@@ -373,6 +447,42 @@ def generator(input_size=512, batch_size=32,
             except Exception as e:
                 traceback.print_exc()
                 continue
+
+
+def debug_show(vis, im, seg_map_per_image, training_mask):
+    """
+        debug 调试时显示照片
+    """
+    if vis:
+        # debug调试用的 原图 6张图 &掩码图
+        fig, axs = plt.subplots(3, 3, figsize=(20, 30))
+        axs[0, 0].imshow(im[..., ::-1])
+        axs[0, 0].set_xticks([])
+        axs[0, 0].set_yticks([])
+        axs[0, 1].imshow(seg_map_per_image[..., 0])
+        axs[0, 1].set_xticks([])
+        axs[0, 1].set_yticks([])
+        axs[0, 2].imshow(seg_map_per_image[..., 1])
+        axs[0, 2].set_xticks([])
+        axs[0, 2].set_yticks([])
+        axs[1, 0].imshow(seg_map_per_image[..., 2])
+        axs[1, 0].set_xticks([])
+        axs[1, 0].set_yticks([])
+        axs[1, 1].imshow(seg_map_per_image[..., 3])
+        axs[1, 1].set_xticks([])
+        axs[1, 1].set_yticks([])
+        axs[1, 2].imshow(seg_map_per_image[..., 4])
+        axs[1, 2].set_xticks([])
+        axs[1, 2].set_yticks([])
+        axs[2, 0].imshow(seg_map_per_image[..., 5])
+        axs[2, 0].set_xticks([])
+        axs[2, 0].set_yticks([])
+        axs[2, 1].imshow(training_mask)
+        axs[2, 1].set_xticks([])
+        axs[2, 1].set_yticks([])
+        plt.tight_layout()
+        plt.show()
+        plt.close()
 
 
 def get_batch(num_workers, **kwargs):
@@ -386,6 +496,7 @@ def get_batch(num_workers, **kwargs):
                     generator_output = enqueuer.queue.get()
                     break
                 else:
+                    # print("休眠0。01")
                     time.sleep(0.01)
             yield generator_output
             generator_output = None
@@ -397,5 +508,6 @@ def get_batch(num_workers, **kwargs):
 if __name__ == '__main__':
     gen = get_batch(num_workers=2, vis=True)
     while True:
-        image, bbox, im_info = next(gen)
+        images, image_fns, seg_maps, training_masks = next(gen)
+
         logger.debug('done')

@@ -28,9 +28,10 @@ logger.setLevel(cfg.debug)
 
 def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
     # Build inference graph
+    #TODO 训练时预测
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables):
         seg_maps_pred = model.model(images, is_training=True)
-
+    #TODO 损失函数
     model_loss = model.loss(seg_maps_gt, seg_maps_pred, training_masks)
     total_loss = tf.add_n([model_loss] + tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
@@ -70,6 +71,7 @@ def main(argv=None):
     if not tf.gfile.Exists(FLAGS.checkpoint_path):
         tf.gfile.MkDir(FLAGS.checkpoint_path)
     else:
+        #TODO
         if not FLAGS.restore:
             tf.gfile.DeleteRecursively(FLAGS.checkpoint_path)
             tf.gfile.MkDir(FLAGS.checkpoint_path)
@@ -98,6 +100,7 @@ def main(argv=None):
         with tf.device('/gpu:%d' % gpu_id):
             with tf.name_scope('model_%d' % gpu_id) as scope:
                 iis = input_images_split[i]
+                #groundtruth 标注数据
                 isegs = input_seg_maps_split[i]
                 itms = input_training_masks_split[i]
                 total_loss, model_loss = tower_loss(iis, isegs, itms, reuse_variables)
@@ -146,24 +149,28 @@ def main(argv=None):
 
         start = time.time()
         for step in range(FLAGS.max_steps):
+            #TODO 返回迭代器的下一个项目 TODO feed_dict 三个参数都是在这里被赋值的，样本解析就在这里。
             data = next(data_generator)
             ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
                                                                                 input_seg_maps: data[2],
                                                                                 input_training_masks: data[3]})
+            # 为null
             if np.isnan(tl):
                 logger.error('Loss diverged, stop training')
                 break
 
             if step % 10 == 0:
+                # 每10次打一次日志？
                 avg_time_per_step = (time.time() - start)/10
                 avg_examples_per_second = (10 * FLAGS.batch_size_per_gpu * len(gpus))/(time.time() - start)
                 start = time.time()
                 logger.info('Step {:06d}, model loss {:.4f}, total loss {:.4f}, {:.2f} seconds/step, {:.2f} examples/second'.format(
                     step, ml, tl, avg_time_per_step, avg_examples_per_second))
 
+            #每1000次保存一次模型
             if step % FLAGS.save_checkpoint_steps == 0:
                 saver.save(sess, os.path.join(FLAGS.checkpoint_path, 'model.ckpt'), global_step=global_step)
-
+            # TODO  每100 次?? 执行3个方法
             if step % FLAGS.save_summary_steps == 0:
                 _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
                                                                                              input_seg_maps: data[2],

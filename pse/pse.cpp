@@ -11,31 +11,40 @@
 #include "include/pybind11/stl_bind.h"
 
 namespace py = pybind11;
-
+/**
+pse：渐进式尺度扩展 ，在这里把6张图合并成一张图
+**/
 namespace pse{
     //S5->S0, small->big
     std::vector<std::vector<int32_t>> pse(
     py::array_t<int32_t, py::array::c_style> label_map,
     py::array_t<uint8_t, py::array::c_style> Sn,
     int c = 6)
+    //接收到3个参数 label，kernal，C
     {
         auto pbuf_label_map = label_map.request();
-        auto pbuf_Sn = Sn.request();
+        auto pbuf_Sn = Sn.request(); // h,w,6
         if (pbuf_label_map.ndim != 2 || pbuf_label_map.shape[0]==0 || pbuf_label_map.shape[1]==0)
             throw std::runtime_error("label map must have a shape of (h>0, w>0)");
+
         int h = pbuf_label_map.shape[0];
         int w = pbuf_label_map.shape[1];
         if (pbuf_Sn.ndim != 3 || pbuf_Sn.shape[0] != c || pbuf_Sn.shape[1]!=h || pbuf_Sn.shape[2]!=w)
             throw std::runtime_error("Sn must have a shape of (c>0, h>0, w>0)");
 
+
+        //TODO 把每个变量和论文匹配上
+        // 二维 初始化
         std::vector<std::vector<int32_t>> res;
         for (size_t i = 0; i<h; i++)
             res.push_back(std::vector<int32_t>(w, 0));
+        //TODO ptr是什么属性 指针？
         auto ptr_label_map = static_cast<int32_t *>(pbuf_label_map.ptr);
         auto ptr_Sn = static_cast<uint8_t *>(pbuf_Sn.ptr);
 
+        // 队列
         std::queue<std::tuple<int, int, int32_t>> q, next_q;
-
+        //
         for (size_t i = 0; i<h; i++)
         {
             auto p_label_map = ptr_label_map + i*w;
@@ -88,5 +97,6 @@ namespace pse{
 }
 
 PYBIND11_MODULE(pse, m){
+    //TODO 定义python方法
     m.def("pse_cpp", &pse::pse, " re-implementation pse algorithm(cpp)", py::arg("label_map"), py::arg("Sn"), py::arg("c")=6);
 }

@@ -15,6 +15,7 @@ echo "开始检测图片的字块区域....."
 
 python  eval.py \
     --test_data_path=./data/pred/input/ \
-    --gpu_list=1 \
     --checkpoint_path=./model/ \
     --output_dir=./data/pred/output
+
+  #    --gpu_list=1 \

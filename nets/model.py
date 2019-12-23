@@ -12,6 +12,7 @@ FLAGS = tf.app.flags.FLAGS
 
 #TODO:bilinear or nearest_neighbor?
 def unpool(inputs, rate):
+    # 上采样 分别 2，4，8倍
     return tf.image.resize_bilinear(inputs, size=[tf.shape(inputs)[1]*rate,  tf.shape(inputs)[2]*rate])
 
 def mean_image_subtraction(images, means=[123.68, 116.78, 103.94]):
@@ -69,18 +70,20 @@ def model(images, outputs = 6, weight_decay=1e-5, is_training=True):
     define the model, we use slim's implemention of resnet
     '''
     images = mean_image_subtraction(images)
-
+    # resnet 提取featuremap
     with slim.arg_scope(resnet_v1.resnet_arg_scope(weight_decay=weight_decay)):
         logits, end_points = resnet_v1.resnet_v1_50(images, is_training=is_training, scope='resnet_v1_50')
-
+    #TODO 提取出四层feature maps（P2,P3,P4,P5)
     #no non-linearities in FPN article
     feature_pyramid = build_feature_pyramid(end_points, weight_decay=weight_decay)
     #unpool sample P
     P_concat = []
-    for i in range(3, 0, -1):
+    for i in range(3, 0, -1): #3，2，1
+        # P5,P4,P3 分别上采样8倍，4倍，2倍，并融合进去为F
         P_concat.append(unpool(feature_pyramid['P'+str(i+2)], 2**i))
-    P_concat.append(feature_pyramid['P2'])
+    P_concat.append(feature_pyramid['P2']) # P2
     #F = C(P2,P3,P4,P5)
+    #TODO 融合得到特征图F （有四张图）
     F = tf.concat(P_concat, axis=-1)
 
     #reduce to 256 channels
@@ -91,17 +94,19 @@ def model(images, outputs = 6, weight_decay=1e-5, is_training=True):
             'scale': True,
             'is_training': is_training
         }
+        # 送入3*3卷积，输出通道数为256
         with slim.arg_scope([slim.conv2d],
                             activation_fn=tf.nn.relu,
                             normalizer_fn=slim.batch_norm,
                             normalizer_params=batch_norm_params,
                             weights_regularizer=slim.l2_regularizer(weight_decay)):
             F = slim.conv2d(F, 256, 3)
+        # 送入1*1卷积，输出6个分割结果（从小到大）
         with slim.arg_scope([slim.conv2d],
                             weights_regularizer=slim.l2_regularizer(weight_decay),
                             activation_fn=None):
             S = slim.conv2d(F, outputs, 1)
-
+    # SIGMOD二分
     seg_S_pred = tf.nn.sigmoid(S)
 
     return seg_S_pred
@@ -125,6 +130,7 @@ def dice_coefficient(y_true_cls, y_pred_cls,
 
 def loss(y_true_cls, y_pred_cls,
          training_mask):
+    #TOOD 损失函数
     g1, g2, g3, g4, g5, g6 = tf.split(value=y_true_cls, num_or_size_splits=6, axis=3)
     s1, s2, s3, s4, s5, s6 = tf.split(value=y_pred_cls, num_or_size_splits=6, axis=3)
     Gn = [g1, g2, g3, g4, g5, g6]
