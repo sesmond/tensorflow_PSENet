@@ -9,9 +9,12 @@ tf.app.flags.DEFINE_integer('batch_size_per_gpu', 8, '')
 tf.app.flags.DEFINE_integer('num_readers', 32, '')
 tf.app.flags.DEFINE_float('learning_rate', 0.00001, '')
 tf.app.flags.DEFINE_integer('max_steps', 100000, '')
+#TODO 设置早停loss
+
 tf.app.flags.DEFINE_float('moving_average_decay', 0.997, '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
 tf.app.flags.DEFINE_string('checkpoint_path', './resnet_train/', '')
+tf.app.flags.DEFINE_string('tboard_path', './tboard/', '')
 tf.app.flags.DEFINE_boolean('restore', False, 'whether to resotre from checkpoint')
 tf.app.flags.DEFINE_integer('save_checkpoint_steps', 1000, '')
 tf.app.flags.DEFINE_integer('save_summary_steps', 100, '')
@@ -27,17 +30,28 @@ gpus = list(range(len(FLAGS.gpu_list.split(','))))
 logger.setLevel(cfg.debug)
 
 def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
+    """
+        损失函数计算
+    :param images:
+    :param seg_maps_gt:
+    :param training_masks:
+    :param reuse_variables:
+    :return:
+    """
     # Build inference graph
-    #TODO 训练时预测
+    # 加载模型
+    print("seg_maps_gt:",seg_maps_gt.shape)
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables):
         seg_maps_pred = model.model(images, is_training=True)
     #TODO 损失函数
     model_loss = model.loss(seg_maps_gt, seg_maps_pred, training_masks)
+    #TODO
     total_loss = tf.add_n([model_loss] + tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
     # add summary
     if reuse_variables is None:
         tf.summary.image('input', images)
+        # TODO 这里列的是第几个？ 反正不是最大的那个 可以把最大的和最小的都画出来看看
         tf.summary.image('seg_map_0_gt', seg_maps_gt[:, :, :, 0:1] * 255)
         tf.summary.image('seg_map_0_pred', seg_maps_pred[:, :, :, 0:1] * 255)
         tf.summary.image('training_masks', training_masks)
@@ -70,11 +84,12 @@ def main(argv=None):
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
     if not tf.gfile.Exists(FLAGS.checkpoint_path):
         tf.gfile.MkDir(FLAGS.checkpoint_path)
-    else:
-        #TODO
-        if not FLAGS.restore:
-            tf.gfile.DeleteRecursively(FLAGS.checkpoint_path)
-            tf.gfile.MkDir(FLAGS.checkpoint_path)
+    # else:
+        # TODO 没必要删除吧
+        # if not FLAGS.restore:
+        #     tf.gfile.DeleteRecursively(FLAGS.checkpoint_path)
+        #     tf.gfile.MkDir(FLAGS.checkpoint_path)
+        # print("")
 
     input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
     input_seg_maps = tf.placeholder(tf.float32, shape=[None, None, None, 6], name='input_score_maps')
@@ -120,10 +135,11 @@ def main(argv=None):
     variables_averages_op = variable_averages.apply(tf.trainable_variables())
     # batch norm updates
     with tf.control_dependencies([variables_averages_op, apply_gradient_op, batch_norm_updates_op]):
-        train_op = tf.no_op(name='train_op')
+        train_op = tf.no_op(name='train_op')    #什么都不做，仅做为点位符使用控制边界。TODO
 
     saver = tf.train.Saver(tf.global_variables())
-    summary_writer = tf.summary.FileWriter(FLAGS.checkpoint_path, tf.get_default_graph())
+    #tboard PATH
+    summary_writer = tf.summary.FileWriter(FLAGS.tboard_path, tf.get_default_graph())
 
     init = tf.global_variables_initializer()
 
@@ -151,6 +167,8 @@ def main(argv=None):
         for step in range(FLAGS.max_steps):
             #TODO 返回迭代器的下一个项目 TODO feed_dict 三个参数都是在这里被赋值的，样本解析就在这里。
             data = next(data_generator)
+            #每步提取10张图片
+            print("训练步数：",step,data.shape)
             #TODO
             ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
                                                                                 input_seg_maps: data[2],
@@ -165,17 +183,20 @@ def main(argv=None):
                 avg_time_per_step = (time.time() - start)/10
                 avg_examples_per_second = (10 * FLAGS.batch_size_per_gpu * len(gpus))/(time.time() - start)
                 start = time.time()
+                #TODO
                 logger.info('Step {:06d}, model loss {:.4f}, total loss {:.4f}, {:.2f} seconds/step, {:.2f} examples/second'.format(
                     step, ml, tl, avg_time_per_step, avg_examples_per_second))
 
             #每1000次保存一次模型
             if step % FLAGS.save_checkpoint_steps == 0:
+                #TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？
                 saver.save(sess, os.path.join(FLAGS.checkpoint_path, 'model.ckpt'), global_step=global_step)
             # TODO  每100 次?? 执行3个方法
             if step % FLAGS.save_summary_steps == 0:
                 _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
                                                                                              input_seg_maps: data[2],
                                                                                              input_training_masks: data[3]})
+                #tensorboard 也得100次才能看到
                 summary_writer.add_summary(summary_str, global_step=step)
 
 if __name__ == '__main__':
