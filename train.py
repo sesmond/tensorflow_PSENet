@@ -169,7 +169,6 @@ def main(argv=None):
             #TODO 返回迭代器的下一个项目 TODO feed_dict 三个参数都是在这里被赋值的，样本解析就在这里。
             data = next(data_generator)
             #每步提取10张图片
-            print("训练步数：",step,data.shape)
             #TODO
             logger.info("训练步数:%d",step)
             ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
