@@ -12,16 +12,16 @@ from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
-# image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
+image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
 text_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_label_curve/'
 # image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
 # text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
 
 
 #TODO 设成啥
-tf.app.flags.DEFINE_string('training_data_path', None,
+tf.app.flags.DEFINE_string('training_data_path', image_path,
                            'training dataset to use')
-tf.app.flags.DEFINE_string('training_text_path', None,
+tf.app.flags.DEFINE_string('training_text_path', text_path,
                            'training text box to use')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
@@ -249,6 +249,7 @@ def shrink_poly(poly, r):
         # print("原框：",poly)
         # print("缩小倍数：",r)
         # print("返回结果：",poly_s[0])
+        #TODO 可能一个都没有 处理一下
         shrinked_bbox = np.array(poly_s[0])
         # print("缩放后点个数:",shrinked_bbox.shape[0])
         #TODO 这里如果不是6个怎么办？

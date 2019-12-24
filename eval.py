@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 #                                            --output_dir =./ data / pred / output
 tf.app.flags.DEFINE_string('test_data_path', './data/pred/input', '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
-tf.app.flags.DEFINE_string('checkpoint_path', './model', '')
+tf.app.flags.DEFINE_string('checkpoint_path', '/Users/minjianxu/Documents/ocr/psnet/model/model', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
 
@@ -86,7 +86,7 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
     :param ratio: compute each seg map thresh
     :return:
     '''
-    #TODO
+    #多出一维的时候去掉，得到 w,h,6
     if len(seg_maps.shape) == 4:
         seg_maps = seg_maps[0, :, :, ]
     # seg_maps shape w,h,6
@@ -107,12 +107,30 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
     mask_res = np.array(mask_res)
     mask_res_resized = cv2.resize(mask_res, (image_w, image_h), interpolation=cv2.INTER_NEAREST)
     boxes = []
+    plt.imshow(mask_res_resized)
+    plt.show()
+
     for label_value in label_values:
         #(y,x)
         points = np.argwhere(mask_res_resized==label_value)
         points = points[:, (1,0)]
+        #TODO 这里不一定是retangle吧
         rect = cv2.minAreaRect(points)
         box = cv2.boxPoints(rect)
+
+        # rect = cv2.minAreaRect(points)
+        binary = np.zeros(mask_res_resized.shape, dtype='uint8')
+        binary[mask_res_resized == i] = 1
+        _, contours, _ = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contour = contours[0]
+
+        bbox = contour
+        if bbox.shape[0] <= 2:
+            continue
+        # bbox = bbox * scale
+        bbox = bbox.astype('int32')
+        new_box = bbox.reshape(-1)
+        print("new_box", new_box)
         boxes.append(box)
 
     return np.array(boxes), kernals, timer
@@ -174,6 +192,7 @@ def main(argv=None):
         variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
         saver = tf.train.Saver(variable_averages.variables_to_restore())
         with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+            print("model path:",FLAGS.checkpoint_path)
             ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
             model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
             logger.info('Restore from {}'.format(model_path))
@@ -223,7 +242,6 @@ def main(argv=None):
                         FLAGS.output_dir,
                         '{}.txt'.format(os.path.splitext(
                             os.path.basename(im_fn))[0]))
-
 
                     with open(res_file, 'w') as f:
                         num =0

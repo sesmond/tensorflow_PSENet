@@ -130,11 +130,19 @@ def dice_coefficient(y_true_cls, y_pred_cls,
 
 def loss(y_true_cls, y_pred_cls,
          training_mask):
+    """
+    损失函数计算
+    :param y_true_cls: gt
+    :param y_pred_cls: 预测值
+    :param training_mask: 掩码
+    :return:
+    """
     #TOOD 损失函数
     g1, g2, g3, g4, g5, g6 = tf.split(value=y_true_cls, num_or_size_splits=6, axis=3)
     s1, s2, s3, s4, s5, s6 = tf.split(value=y_pred_cls, num_or_size_splits=6, axis=3)
     Gn = [g1, g2, g3, g4, g5, g6]
     Sn = [s1, s2, s3, s4, s5, s6]
+    # 比较最大的框，计算出Lc，即表示没有进行缩放时候的损失函数
     _, Lc = dice_coefficient(Gn[5], Sn[5], training_mask=training_mask)
     tf.summary.scalar('Lc_loss', Lc)
 
@@ -145,8 +153,10 @@ def loss(y_true_cls, y_pred_cls,
     for i in range(5):
         di, _ = dice_coefficient(Gn[i]*W, Sn[i]*W, training_mask=training_mask)
         D += di
+    #Ls 是缩放后的5个框的损失函数取平均值
     Ls = 1-D/5.
     tf.summary.scalar('Ls_loss', Ls)
+    # 原框Lc所占比例
     lambda_ = 0.7
     L = lambda_*Lc + (1-lambda_)*Ls
     return L
