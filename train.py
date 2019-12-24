@@ -1,4 +1,6 @@
 import time
+import datetime
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
@@ -139,8 +141,10 @@ def main(argv=None):
         train_op = tf.no_op(name='train_op')    #什么都不做，仅做为点位符使用控制边界。TODO
 
     saver = tf.train.Saver(tf.global_variables())
+    today = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    summary_dir = os.path.join(FLAGS.tboard_path, today)
     #tboard PATH
-    summary_writer = tf.summary.FileWriter(FLAGS.tboard_path, tf.get_default_graph())
+    summary_writer = tf.summary.FileWriter(summary_dir, tf.get_default_graph())
 
     init = tf.global_variables_initializer()
 
