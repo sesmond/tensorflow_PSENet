@@ -117,21 +117,36 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         #TODO 这里不一定是retangle吧
         rect = cv2.minAreaRect(points)
         box = cv2.boxPoints(rect)
-
+        #TODO 这里找出来的点 points 是一个小框，然后这些点怎么换算成坐标！
         # rect = cv2.minAreaRect(points)
         binary = np.zeros(mask_res_resized.shape, dtype='uint8')
-        binary[mask_res_resized == i] = 1
+        binary[mask_res_resized == label_value] = 1
+        #TODO !!
         _, contours, _ = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        #TODO!!
+        if len(contours)<=0:
+            continue
         contour = contours[0]
 
         bbox = contour
         if bbox.shape[0] <= 2:
             continue
+        else:
+            print("多边形：",bbox.shape,bbox)
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
-        new_box = bbox.reshape(-1)
-        print("new_box", new_box)
-        boxes.append(box)
+        new_box = bbox.reshape(-1,2) # 转换成2点坐标
+        print("new_box and box :\n", new_box,box)
+        #TODO 画图并展示
+        pts = np.array(new_box, np.int32)
+        pts = pts.reshape(-1,1,2)
+        # TODO 划线 多余4点坐标
+        # cv2.polylines(mask_res_resized,[pts], True, color=(200, 200,200),
+        #               thickness=3)
+        # plt.imshow(mask_res_resized)
+        # plt.show()
+
+        boxes.append(new_box)
 
     return np.array(boxes), kernals, timer
 
@@ -220,18 +235,28 @@ def main(argv=None):
                 #     f.write(chrome_trace)
                 #TODO 转换出预测框！！！ pse算法后处理
                 boxes, kernels, timer = detect(seg_maps=seg_maps, timer=timer, image_w=w, image_h=h)
-                print("pse后box：",boxes)
+                print("pse后box：",boxes.shape)
 
                 logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
                     im_fn, timer['net']*1000, timer['pse']*1000))
                 #TODO!!!
                 if boxes is not None:
-                    boxes = boxes.reshape((-1, 4, 2))
-                    boxes[:, :, 0] /= ratio_w
-                    boxes[:, :, 1] /= ratio_h
+                    #TODO 缩放比例
+                    # boxes = boxes.reshape((-1, -1, 2))
                     h, w, _ = im.shape
-                    boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w)
-                    boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h)
+
+                    for box in boxes:
+                        box[:, 0] = box[:, 0]/ratio_w
+                        box[:, 1] = box[:, 1]/ratio_h
+                        # 最小是0，最大是h？ 操作完之后防止产生小于0 大于边界的值
+                        box[:, 0] = np.clip(box[:, 0], 0, w)
+                        box[:, 1] = np.clip(box[:, 1], 0, h)
+
+                    # boxes[:, :, 0] = boxes[:, :, 0]/ratio_w
+                    # boxes[:, :, 1] = boxes[:, :, 0]/ratio_h
+                    # # 最小是0，最大是h？ 操作完之后防止产生小于0 大于边界的值
+                    # boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w)
+                    # boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h)
 
                 duration = time.time() - start_time
                 logger.info('[timing] {}'.format(duration))
@@ -249,8 +274,9 @@ def main(argv=None):
                             # to avoid submitting errors
                             box = boxes[i]
                             print("预测box：",box)
-                            if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
-                                continue
+                            #TODO
+                            # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
+                            #     continue
 
                             num += 1
                             # 左下开始逆时针坐标： 左下 左上 右上 右下 ，还是四点坐标
@@ -258,6 +284,8 @@ def main(argv=None):
                                 box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]))
                             #TODO 划线 多余4点坐标
                             cv2.polylines(im[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
+                        # plt.imshow(im[:, :, ::-1])
+                        # plt.show()
                 if not FLAGS.no_write_images:
                     img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
                     cv2.imwrite(img_path, im[:, :, ::-1])

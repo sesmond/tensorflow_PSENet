@@ -55,6 +55,7 @@ def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
     if reuse_variables is None:
         tf.summary.image('input', images)
         # TODO 这里列的是第几个？ 反正不是最大的那个 可以把最大的和最小的都画出来看看
+        # TODO 这里有问题 gt不应该有问题
         tf.summary.image('seg_map_0_gt', seg_maps_gt[:, :, :, 0:1] * 255)
         tf.summary.image('seg_map_0_pred', seg_maps_pred[:, :, :, 0:1] * 255)
         tf.summary.image('training_masks', training_masks)
