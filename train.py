@@ -8,8 +8,8 @@ from utils.utils_tool import logger, cfg
 
 tf.app.flags.DEFINE_string('name', 'psenet', '')
 tf.app.flags.DEFINE_integer('input_size', 512, '')
-tf.app.flags.DEFINE_integer('batch_size_per_gpu', 8, '')
-tf.app.flags.DEFINE_integer('num_readers', 32, '')
+tf.app.flags.DEFINE_integer('batch_size_per_gpu', 1, '')
+tf.app.flags.DEFINE_integer('num_readers', 1, '')
 tf.app.flags.DEFINE_float('learning_rate', 0.00001, '')
 tf.app.flags.DEFINE_integer('max_steps', 100000, '')
 #TODO 设置早停loss
@@ -18,9 +18,10 @@ tf.app.flags.DEFINE_float('moving_average_decay', 0.997, '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
 tf.app.flags.DEFINE_string('checkpoint_path', './model/', '')
 tf.app.flags.DEFINE_string('tboard_path', './tboard/', '')
-tf.app.flags.DEFINE_boolean('restore', False, 'whether to resotre from checkpoint')
 tf.app.flags.DEFINE_integer('save_checkpoint_steps', 1000, '')
 tf.app.flags.DEFINE_integer('save_summary_steps', 100, '')
+tf.app.flags.DEFINE_boolean('restore', False, 'whether to resotre from checkpoint')
+#TODO 二次训练的旧模型 微调使用
 tf.app.flags.DEFINE_string('pretrained_model_path', None, '')
 
 from nets import model
@@ -195,14 +196,19 @@ def main(argv=None):
 
             #每1000次保存一次模型
             if step % FLAGS.save_checkpoint_steps == 0:
-                #TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？
-                saver.save(sess, os.path.join(FLAGS.checkpoint_path, 'model.ckpt'), global_step=global_step)
+                #TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
+                #模型名为了不冲突最好加上别的名字
+                train_start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+                model_name = 'model_{:s}.ckpt'.format(str(train_start_time))
+                model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
+                saver.save(sess, model_save_path, global_step=global_step)
             # 每100 次算一下损失函数写入tensorboard
             if step % FLAGS.save_summary_steps == 0:
                 _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
                                                                                              input_seg_maps: data[2],
                                                                                              input_training_masks: data[3]})
                 summary_writer.add_summary(summary_str, global_step=step)
+
 
 if __name__ == '__main__':
     tf.app.run()
