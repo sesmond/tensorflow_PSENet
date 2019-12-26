@@ -198,7 +198,7 @@ def main(argv=None):
             if step % FLAGS.save_checkpoint_steps == 0:
                 #TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
                 #模型名为了不冲突最好加上别的名字
-                train_start_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime(time.time()))
+                train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
                 model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time),str(tl))
                 model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
                 saver.save(sess, model_save_path, global_step=global_step)
