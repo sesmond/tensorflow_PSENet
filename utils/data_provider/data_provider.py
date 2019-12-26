@@ -19,8 +19,8 @@ from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
 
-image_path = '../../data/ctw1500/train/text_image'
-text_path = '../../data/ctw1500/train/text_label_curve/'
+image_path = './data/ctw1500/train/text_image'
+text_path = './data/ctw1500/train/text_label_curve/'
 # image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
 # text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
 from utils.data_provider import data_reader
