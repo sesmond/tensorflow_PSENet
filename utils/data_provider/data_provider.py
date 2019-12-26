@@ -523,7 +523,7 @@ def get_batch(num_workers, **kwargs):
 
 
 if __name__ == '__main__':
-    gen = get_batch(num_workers=2, vis=True)
+    gen = get_batch(num_workers=2, vis=False)
     while True:
         images, image_fns, seg_maps, training_masks = next(gen)
 
