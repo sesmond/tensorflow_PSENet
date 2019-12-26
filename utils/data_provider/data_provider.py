@@ -1,4 +1,7 @@
 # encoding:utf-8
+"""
+训练时抽取数据的工具集
+"""
 import os
 import glob
 import time
@@ -7,6 +10,7 @@ import csv
 import traceback
 import cv2
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,13 +18,14 @@ from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
-image_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_image'
-text_path = '/Users/minjianxu/Documents/icdar/ctw1500/train/text_label_curve/'
+
+image_path = '../../data/ctw1500/train/text_image'
+text_path = '../../data/ctw1500/train/text_label_curve/'
 # image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
 # text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
+from utils.data_provider import data_reader
 
-
-#TODO 设成啥
+# TODO 设成啥
 tf.app.flags.DEFINE_string('training_data_path', image_path,
                            'training dataset to use')
 tf.app.flags.DEFINE_string('training_text_path', text_path,
@@ -39,6 +44,18 @@ tf.app.flags.DEFINE_float('min_crop_side_ratio', 0.1,
 FLAGS = tf.app.flags.FLAGS
 
 
+def get_data_reader():
+    """
+        获取应该用数据读取器 TODO
+    :return:
+    """
+    if True:
+        real_reader = data_reader.Ctw1500Reader()
+    else:
+        real_reader = data_reader.Icdar2015Reader()
+    return real_reader
+
+
 def get_files(exts):
     '''
     获取后缀名为exts的所有文件
@@ -53,6 +70,7 @@ def get_files(exts):
             os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
     return files
 
+
 def get_json_label():
     label_file_list = get_files(['json'])
     label = {}
@@ -65,6 +83,7 @@ def get_json_label():
                     label[k] = v
     return label
 
+
 def load_annoataion(p):
     '''
     load annotation from the text file
@@ -76,52 +95,19 @@ def load_annoataion(p):
     text_tags = []
     if not os.path.exists(p):
         return np.array(text_polys, dtype=np.float32)
+
+    real_reader = get_data_reader()
     with open(p, 'r') as f:
         reader = csv.reader(f)
         for line in reader:
             # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
             line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
-            #TODO ctw 样本
-            if True:
-                temp_poly,temp_tag = load_bboxes_ctw(line)
-            else:
-                temp_poly, temp_tag = load_bboxes_icdar2015(line)
+            # TODO 解析样本行
+            temp_poly, temp_tag = real_reader.load_box(line)
             text_polys.append(temp_poly)
             text_tags.append(temp_tag)
         return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
 
-
-def load_bboxes_icdar2015(line):
-    """
-        icadr 2015样本 4点坐标
-    :param line:
-    :return:
-    """
-    label = line[-1]
-    # x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
-    # text_polys.append([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])
-    temp_poly = []
-    for idx in range(0, len(line) - 1, 2):
-        temp_poly.append([float(line[idx]), float(line[idx + 1])])
-    if label == '*' or label == '###' or label == '?':
-        tag = True
-    else:
-        tag = False
-    return temp_poly,tag
-
-def load_bboxes_ctw(line):
-    gt = line
-    x1 = np.int(gt[0])
-    y1 = np.int(gt[1])
-    #TODO 前4项是矩形两点坐标
-    bbox = [np.int(gt[i]) for i in range(4, 32)]
-    #TODO  坐标相对位置
-    bbox = np.array(bbox) + np.array(([x1 * 1.0, y1 * 1.0] * 14))
-    new_box = []
-    for idx in range(0, len(bbox) - 1, 2):
-        new_box.append([float(bbox[idx]), float(bbox[idx + 1])])
-
-    return np.array(new_box), False
 
 def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     '''
@@ -135,16 +121,16 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     (h, w) = xxx_todo_changeme
     if polys.shape[0] == 0:
         return [], []
-    polys[:, :, 0] = np.clip(polys[:, :, 0], 0, w-1)
-    polys[:, :, 1] = np.clip(polys[:, :, 1], 0, h-1)
+    polys[:, :, 0] = np.clip(polys[:, :, 0], 0, w - 1)
+    polys[:, :, 1] = np.clip(polys[:, :, 1], 0, h - 1)
 
     validated_polys = []
     validated_tags = []
-    #TODO !!
+    # TODO !!
     for poly, tag in zip(polys, tags):
-        if abs(pyclipper.Area(poly))<1:
+        if abs(pyclipper.Area(poly)) < 1:
             continue
-        #clockwise
+        # clockwise
         if pyclipper.Orientation(poly):
             poly = poly[::-1]
 
@@ -152,57 +138,58 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
         validated_tags.append(tag)
     return np.array(validated_polys), np.array(validated_tags)
 
+
 def crop_area(im, polys, tags, crop_background=False, max_tries=50):
-    '''
-    make random crop from the input image
+    """
+    make random crop from the input image / 切割原图，二次生成样本
     :param im:
     :param polys:
     :param tags:
     :param crop_background:
     :param max_tries:
     :return:
-    '''
+    """
     h, w, _ = im.shape
-    pad_h = h//10
-    pad_w = w//10
-    #边缘扩充10%
-    h_array = np.zeros((h + pad_h*2), dtype=np.int32)
-    w_array = np.zeros((w + pad_w*2), dtype=np.int32)
+    pad_h = h // 10
+    pad_w = w // 10
+    # 边缘扩充10%
+    h_array = np.zeros((h + pad_h * 2), dtype=np.int32)
+    w_array = np.zeros((w + pad_w * 2), dtype=np.int32)
     for poly in polys:
-        #四舍五入
+        # 四舍五入
         poly = np.round(poly, decimals=0).astype(np.int32)
         minx = np.min(poly[:, 0])
         maxx = np.max(poly[:, 0])
-        #横向最大最小之间设为1
-        w_array[minx+pad_w:maxx+pad_w] = 1
+        # 横向最大最小之间设为1
+        w_array[minx + pad_w:maxx + pad_w] = 1
         miny = np.min(poly[:, 1])
         maxy = np.max(poly[:, 1])
-        #纵向最大最小之间设为1
-        h_array[miny+pad_h:maxy+pad_h] = 1
-    #以上 所有框合并
+        # 纵向最大最小之间设为1
+        h_array[miny + pad_h:maxy + pad_h] = 1
+    # 以上 所有框合并
 
     # ensure the cropped area not across a text
     # 找出剩下的没有盖到的位置区域
     h_axis = np.where(h_array == 0)[0]
     w_axis = np.where(w_array == 0)[0]
     if len(h_axis) == 0 or len(w_axis) == 0:
-        #说明横向或者竖向都被文字填充满了，但是上面+padding了，所以是不可能走到这里的
+        # 说明横向或者竖向都被文字填充满了，但是上面+padding了，所以是不可能走到这里的
         return im, polys, tags
     for i in range(max_tries):
-        #最多尝试50次
+        # 最多尝试50次
         # x y 方向任选两个没有文字区域的点
         xx = np.random.choice(w_axis, size=2)
         xmin = np.min(xx) - pad_w
         xmax = np.max(xx) - pad_w
-        xmin = np.clip(xmin, 0, w-1)
-        xmax = np.clip(xmax, 0, w-1)
+        xmin = np.clip(xmin, 0, w - 1)
+        xmax = np.clip(xmax, 0, w - 1)
         yy = np.random.choice(h_axis, size=2)
         ymin = np.min(yy) - pad_h
         ymax = np.max(yy) - pad_h
-        ymin = np.clip(ymin, 0, h-1)
-        ymax = np.clip(ymax, 0, h-1)
+        ymin = np.clip(ymin, 0, h - 1)
+        ymax = np.clip(ymax, 0, h - 1)
         # 如果空白框小于原图10%，则再次尝试
-        if xmax - xmin < FLAGS.min_crop_side_ratio*w or ymax - ymin < FLAGS.min_crop_side_ratio*h:
+        if xmax - xmin < FLAGS.min_crop_side_ratio * w or ymax - ymin < FLAGS.min_crop_side_ratio * h:
             # area too small
             continue
         # 如果有文本框
@@ -211,19 +198,18 @@ def crop_area(im, polys, tags, crop_background=False, max_tries=50):
             # 所有点的x坐标在范围内，y坐标再范围内
             poly_axis_in_area = (polys[:, :, 0] >= xmin) & (polys[:, :, 0] <= xmax) \
                                 & (polys[:, :, 1] >= ymin) & (polys[:, :, 1] <= ymax)
-            #TODO !! 这里有点问题，切出来的样本不行
-            # 统计坐标点在范围内的个数 ！！！ 4点坐标是等于4 ，这里应该要么是0，要么就是所有点
+            # 统计坐标点在范围内的个数 ！！！ 4点坐标是等于4 ，这里应该要么是0，要么就是所有点 改为>=0 暂时适配所有
             selected_polys = np.where(np.sum(poly_axis_in_area, axis=1) >= 4)[0]
         else:
             selected_polys = []
         if len(selected_polys) == 0:
             # no text in this area 切割框内无文本 TODO 没看懂
             if crop_background:
-                return im[ymin:ymax+1, xmin:xmax+1, :], polys[selected_polys], tags[selected_polys]
+                return im[ymin:ymax + 1, xmin:xmax + 1, :], polys[selected_polys], tags[selected_polys]
             else:
                 continue
         # 切割图片
-        im = im[ymin:ymax+1, xmin:xmax+1, :]
+        im = im[ymin:ymax + 1, xmin:xmax + 1, :]
         # 切割范围内的文本框
         polys = polys[selected_polys]
         tags = tags[selected_polys]
@@ -234,18 +220,20 @@ def crop_area(im, polys, tags, crop_background=False, max_tries=50):
     # 如果尝试50次没有取到则直接返回原图
     return im, polys, tags
 
+
 def perimeter(poly):
-    #TODO ?这是什么 周长
+    # 计算周长
     try:
-        p=0
+        p = 0
         nums = poly.shape[0]
         for i in range(nums):
-            p += abs(np.linalg.norm(poly[i%nums]-poly[(i+1)%nums]))
+            p += abs(np.linalg.norm(poly[i % nums] - poly[(i + 1) % nums]))
         # logger.debug('perimeter:{}'.format(p))
         return p
     except Exception as e:
         traceback.print_exc()
         raise e
+
 
 def shrink_poly(poly, r):
     """
@@ -254,34 +242,36 @@ def shrink_poly(poly, r):
     :param r: 收缩比例
     :return:
     """
-    #TODO debug调试 TODO 这里四点坐标有问题
+    # TODO debug调试 TODO 这里四点坐标有问题
     try:
         area_poly = abs(pyclipper.Area(poly))
         perimeter_poly = perimeter(poly)
         poly_s = []
         pco = pyclipper.PyclipperOffset()
         if perimeter_poly:
-            d = area_poly*(1-r*r)/perimeter_poly
+            d = area_poly * (1 - r * r) / perimeter_poly
             # offset = min((int)(area * (1 - rate) / (peri + 0.001) + 0.5), max_shr)
 
             pco.AddPath(poly, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
-            #TODO 什么逻辑？ 这个没搞明白
+            # TODO 什么逻辑？ 这个没搞明白
+            # 缩小后返回多边形
             poly_s = pco.Execute(-d)
         # print("原框：",poly)
         # print("缩小倍数：",r)
         # print("返回结果：",poly_s[0])
-        #TODO 可能一个都没有 处理一下
+        # TODO 可能一个都没有 处理一下
         shrinked_bbox = np.array(poly_s[0])
         # print("缩放后点个数:",shrinked_bbox.shape[0])
-        #TODO 这里如果不是6个怎么办？
+        # TODO 这里如果不是6个怎么办？
         return [poly_s[0]]
-        #TODO 可能前面的坐标转换有问题
+        # TODO 可能前面的坐标转换有问题
         # return [poly]
     except Exception as e:
         traceback.print_exc()
         raise e
 
-#TODO:filter small text(when shrincked region shape is 0 no matter what scale ratio is)
+
+# TODO:filter small text(when shrincked region shape is 0 no matter what scale ratio is)
 def generate_seg(im_size, polys, tags, image_name, scale_ratio):
     '''
     :param im_size: input image size
@@ -293,58 +283,58 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
     seg_maps: segmentation results with different scale ratio, save in different channel
     training_mask: ignore text regions
     '''
-    #TODO 一张生成6张seomap
+    # TODO 一张生成6张seomap
     h, w = im_size
-    #mark different text poly 最终输出6张
-    seg_maps = np.zeros((h,w,6), dtype=np.uint8)
+    # mark different text poly 最终输出6张
+    seg_maps = np.zeros((h, w, 6), dtype=np.uint8)
     # mask used during traning, to ignore some hard areas
     training_mask = np.ones((h, w), dtype=np.uint8)
     ignore_poly_mark = []
     for i in range(len(scale_ratio)):
-        seg_map = np.zeros((h,w), dtype=np.uint8)
-        #TODO 看下14点坐标是否适配
+        seg_map = np.zeros((h, w), dtype=np.uint8)
+        # TODO 看下14点坐标是否适配
         for poly_idx, poly_tag in enumerate(zip(polys, tags)):
             # 对每个多边形操作
             poly = poly_tag[0]
             tag = poly_tag[1]
 
-            # ignore ###
+            # ignore ### icdar样本会有些没文字的标志
             if i == 0 and tag:
-                #TODO
+                # 填0 TODO
                 cv2.fillPoly(training_mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
-                #TODO
                 ignore_poly_mark.append(poly_idx)
 
             # seg map
             shrinked_polys = []
             if poly_idx not in ignore_poly_mark:
-                #收缩原框，返回缩小后的小框
-                # TODO 这里缩小框点个数有可能不确定，而且一个框可能拆成多个框
+                # 收缩原框，返回缩小后的小框
+                # 这里缩小框点个数不确定，不一定多少个
                 shrinked_polys = shrink_poly(poly.copy(), scale_ratio[i])
             #
             if not len(shrinked_polys) and poly_idx not in ignore_poly_mark:
                 logger.info("before shrink poly area:{} len(shrinked_poly) is 0,image {}".format(
-                    abs(pyclipper.Area(poly)),image_name))
+                    abs(pyclipper.Area(poly)), image_name))
                 # if the poly is too small, then ignore it during training
                 cv2.fillPoly(training_mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
                 ignore_poly_mark.append(poly_idx)
                 continue
-            #TODO !!! 这里可能是多点坐标
+            # 将缩放后的样本gt框画到seg_map上
             for shrinked_poly in shrinked_polys:
-                #TODO color1 是黑色？
+                # TODO color1 是黑色？
                 # 看看是不是这个填充的问题，先画框试试
                 seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
                 # seg_map = cv2.drawContours(seg_map, [np.array(shrinked_poly).astype(np.int32)], -1, 1, -1)
                 # plt.imshow(seg_map)
                 # plt.show()
-        #TODO (h,w,6) 生成6张图
+        # (h,w,6) 返回6张图
         seg_maps[..., i] = seg_map
     return seg_maps, training_mask
 
-#TODO batch size =32
+
+# TODO batch size =32
 def generator(input_size=512, batch_size=2,
-              background_ratio=3./8,
-              random_scale=np.array([0.125, 0.25,0.5, 1, 2.0, 3.0]),
+              background_ratio=3. / 8,
+              random_scale=np.array([0.125, 0.25, 0.5, 1, 2.0, 3.0]),
               vis=False,
               scale_ratio=np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])):
     '''
@@ -357,8 +347,8 @@ def generator(input_size=512, batch_size=2,
     :param scale_ratio:ground truth scale ratio
     :return:
     '''
-    #TODO 样本解析为需要的格式
-    #参与训练的所有图片名
+    # TODO 样本解析为需要的格式
+    # 参与训练的所有图片名
     image_list = np.array(get_files(['jpg', 'png', 'jpeg', 'JPG']))
 
     logger.info('{} training images in {}'.format(
@@ -378,45 +368,46 @@ def generator(input_size=512, batch_size=2,
                 im_fn = image_list[i]
                 im = cv2.imread(im_fn)
                 if im is None:
-                    logger.info("图像没有找到：%s",im_fn)
+                    logger.info("图像没有找到：%s", im_fn)
                     continue
                 h, w, _ = im.shape
-                #TODO 文本路径
+                # TODO 文本路径
                 # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
                 # txt_fn = os.path.join(os.path.dirname(im_fn),'')
 
-                txt_fn =  FLAGS.training_text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
+                txt_fn = FLAGS.training_text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
                 # print("读取文本：",txt_fn)
                 # 后缀名jpg 换成txt找标注
                 if not os.path.exists(txt_fn):
                     continue
-                #text_tags 是否是文本 True False TODO
+                # text_tags 是否是文本 True False TODO
                 text_polys, text_tags = load_annoataion(txt_fn)
-                #按原样读取
+                # 按原样读取
                 if text_polys.shape[0] == 0:
                     continue
-                #TODO
+                # TODO
                 text_polys, text_tags = check_and_validate_polys(text_polys, text_tags, (h, w))
-                #TODO 这是要缩放图片吗？是为了放大字体营造样本多样性？
+                # TODO 这是要缩放图片吗？是为了放大字体营造样本多样性？
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
+                # TODO debug竟然卡死在这里！
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale)
                 text_polys *= rd_scale
                 # random crop a area from image
                 if np.random.rand() < background_ratio:
-                # if np.random.rand() < 2:
+                    # if np.random.rand() < 2:
                     # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     # 如果切出来的图里有文本则舍弃掉继续
                     if text_polys.shape[0] > 0:
-                        #切出来的框里有文本，则不是负样本舍弃掉继续
-                        #TODO 但是这样其实浪费了很多资源，这只是为了找一个没有文本框的切图制造负样本而已
+                        # 切出来的框里有文本，则不是负样本舍弃掉继续
+                        # TODO 但是这样其实浪费了很多资源，这只是为了找一个没有文本框的切图制造负样本而已
                         # cannot find background
                         continue
                     # 画一下负样本
                     # pad and resize image
                     new_h, new_w, _ = im.shape
-                    #max_h_w_i = np.max([new_h, new_w, input_size])
+                    # max_h_w_i = np.max([new_h, new_w, input_size])
                     im_padded = np.zeros((new_h, new_w, 3), dtype=np.uint8)
                     im_padded[:new_h, :new_w, :] = im.copy()
                     im = cv2.resize(im_padded, dsize=(input_size, input_size))
@@ -430,7 +421,7 @@ def generator(input_size=512, batch_size=2,
 
                     # pad the image to the training input size or the longer side of image
                     new_h, new_w, _ = im.shape
-                    #max_h_w_i = np.max([new_h, new_w, input_size])
+                    # max_h_w_i = np.max([new_h, new_w, input_size])
                     im_padded = np.zeros((new_h, new_w, 3), dtype=np.uint8)
                     im_padded[:new_h, :new_w, :] = im.copy()
                     im = im_padded
@@ -439,8 +430,8 @@ def generator(input_size=512, batch_size=2,
                     resize_h = input_size
                     resize_w = input_size
                     im = cv2.resize(im, dsize=(resize_w, resize_h))
-                    resize_ratio_3_x = resize_w/float(new_w)
-                    resize_ratio_3_y = resize_h/float(new_h)
+                    resize_ratio_3_x = resize_w / float(new_w)
+                    resize_ratio_3_y = resize_h / float(new_h)
                     text_polys[:, :, 0] *= resize_ratio_3_x
                     text_polys[:, :, 1] *= resize_ratio_3_y
                     new_h, new_w, _ = im.shape
@@ -448,24 +439,24 @@ def generator(input_size=512, batch_size=2,
                     # plt.show()
                     # #TODO
                     seg_map_per_image, training_mask = generate_seg((new_h, new_w), text_polys, text_tags,
-                                                                     image_list[i], scale_ratio)
+                                                                    image_list[i], scale_ratio)
                     if not len(seg_map_per_image):
                         logger.info("len(seg_map)==0 image: %d " % i)
                         continue
-                #DEBUG
-                debug_show(vis, im, seg_map_per_image, training_mask)
+                # DEBUG
+                _debug_show(vis, im, seg_map_per_image, training_mask)
 
-                #TODO 单通道？
+                # TODO 单通道？
                 images.append(im[..., ::-1].astype(np.float32))
                 image_fns.append(im_fn)
-                #TODO 这是什么意思？
+                # TODO 这是什么意思？
                 seg_maps.append(seg_map_per_image[::4, ::4, :].astype(np.float32))
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
-                    print("获取样本数：",len(images))
-                    #返回 图片，文件名，gt，mask
-                    yield images, image_fns, seg_maps,  training_masks
+                    print("获取样本数：", len(images))
+                    # 返回 图片，文件名，gt，mask
+                    yield images, image_fns, seg_maps, training_masks
                     images = []
                     image_fns = []
                     seg_maps = []
@@ -475,7 +466,7 @@ def generator(input_size=512, batch_size=2,
                 continue
 
 
-def debug_show(vis, im, seg_map_per_image, training_mask):
+def _debug_show(vis, im, seg_map_per_image, training_mask):
     """
         debug 调试时显示照片
     """
