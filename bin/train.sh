@@ -40,6 +40,7 @@ python -m train \
 --gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=32 \
 --checkpoint_path=./model/ctw1500 \
+--pretrained_model_path=./models/pred/model.ckpt \
 --training_data_path=./data/ctw1500/train/text_image \
 --training_text_path=./data/ctw1500/train/text_label_curve/ \
 >> ./logs/psenet_$1_$Date.log 2>&1 &
