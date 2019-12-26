@@ -23,9 +23,11 @@ if [ "$1" = "console" ]; then
     --save_summary_steps=2 \
     --save_checkpoint_steps=2 \
     --max_steps=2 \
+    --num_readers=1 \
     --gpu_list=1 --input_size=512 \
     --batch_size_per_gpu=1 \
     --checkpoint_path=./model/ctw1500 \
+    --pretrained_model_path=./models/pred
     --training_data_path=./data/ctw1500/train/text_image \
     --training_text_path=./data/ctw1500/train/text_label_curve/
     exit
