@@ -6,7 +6,7 @@ import json
 import csv
 import traceback
 import cv2
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
@@ -163,22 +163,32 @@ def crop_area(im, polys, tags, crop_background=False, max_tries=50):
     h, w, _ = im.shape
     pad_h = h//10
     pad_w = w//10
+    #边缘扩充10%
     h_array = np.zeros((h + pad_h*2), dtype=np.int32)
     w_array = np.zeros((w + pad_w*2), dtype=np.int32)
     for poly in polys:
+        #四舍五入
         poly = np.round(poly, decimals=0).astype(np.int32)
         minx = np.min(poly[:, 0])
         maxx = np.max(poly[:, 0])
+        #横向最大最小之间设为1
         w_array[minx+pad_w:maxx+pad_w] = 1
         miny = np.min(poly[:, 1])
         maxy = np.max(poly[:, 1])
+        #纵向最大最小之间设为1
         h_array[miny+pad_h:maxy+pad_h] = 1
+    #以上 所有框合并
+
     # ensure the cropped area not across a text
+    # 找出剩下的没有盖到的位置区域
     h_axis = np.where(h_array == 0)[0]
     w_axis = np.where(w_array == 0)[0]
     if len(h_axis) == 0 or len(w_axis) == 0:
+        #说明横向或者竖向都被文字填充满了，但是上面+padding了，所以是不可能走到这里的
         return im, polys, tags
     for i in range(max_tries):
+        #最多尝试50次
+        # x y 方向任选两个没有文字区域的点
         xx = np.random.choice(w_axis, size=2)
         xmin = np.min(xx) - pad_w
         xmax = np.max(xx) - pad_w
@@ -189,28 +199,37 @@ def crop_area(im, polys, tags, crop_background=False, max_tries=50):
         ymax = np.max(yy) - pad_h
         ymin = np.clip(ymin, 0, h-1)
         ymax = np.clip(ymax, 0, h-1)
+        # 如果空白框小于原图10%，则再次尝试
         if xmax - xmin < FLAGS.min_crop_side_ratio*w or ymax - ymin < FLAGS.min_crop_side_ratio*h:
             # area too small
             continue
+        # 如果有文本框
         if polys.shape[0] != 0:
+            # 坐标在上面生成的框之内
+            # 所有点的x坐标在范围内，y坐标再范围内
             poly_axis_in_area = (polys[:, :, 0] >= xmin) & (polys[:, :, 0] <= xmax) \
                                 & (polys[:, :, 1] >= ymin) & (polys[:, :, 1] <= ymax)
-            selected_polys = np.where(np.sum(poly_axis_in_area, axis=1) == 4)[0]
+            #TODO !! 这里有点问题，切出来的样本不行
+            # 统计坐标点在范围内的个数 ！！！ 4点坐标是等于4 ，这里应该要么是0，要么就是所有点
+            selected_polys = np.where(np.sum(poly_axis_in_area, axis=1) >= 4)[0]
         else:
             selected_polys = []
         if len(selected_polys) == 0:
-            # no text in this area
+            # no text in this area 切割框内无文本 TODO 没看懂
             if crop_background:
                 return im[ymin:ymax+1, xmin:xmax+1, :], polys[selected_polys], tags[selected_polys]
             else:
                 continue
+        # 切割图片
         im = im[ymin:ymax+1, xmin:xmax+1, :]
+        # 切割范围内的文本框
         polys = polys[selected_polys]
         tags = tags[selected_polys]
+        # 相对坐标切换成新图
         polys[:, :, 0] -= xmin
         polys[:, :, 1] -= ymin
         return im, polys, tags
-
+    # 如果尝试50次没有取到则直接返回原图
     return im, polys, tags
 
 def perimeter(poly):
@@ -383,12 +402,16 @@ def generator(input_size=512, batch_size=2,
                 text_polys *= rd_scale
                 # random crop a area from image
                 if np.random.rand() < background_ratio:
-                    #TODO 是不是造负样本？
-                    # crop background
+                # if np.random.rand() < 2:
+                    # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
+                    # 如果切出来的图里有文本则舍弃掉继续
                     if text_polys.shape[0] > 0:
+                        #切出来的框里有文本，则不是负样本舍弃掉继续
+                        #TODO 但是这样其实浪费了很多资源，这只是为了找一个没有文本框的切图制造负样本而已
                         # cannot find background
                         continue
+                    # 画一下负样本
                     # pad and resize image
                     new_h, new_w, _ = im.shape
                     #max_h_w_i = np.max([new_h, new_w, input_size])
@@ -439,7 +462,7 @@ def generator(input_size=512, batch_size=2,
 
                 if len(images) == batch_size:
                     print("获取样本数：",len(images))
-                    #TODO 返回4个值
+                    #返回 图片，文件名，gt，mask
                     yield images, image_fns, seg_maps,  training_masks
                     images = []
                     image_fns = []
@@ -454,35 +477,35 @@ def debug_show(vis, im, seg_map_per_image, training_mask):
     """
         debug 调试时显示照片
     """
-        # debug调试用的 原图 6张图 &掩码图
-        # fig, axs = plt.subplots(3, 3, figsize=(20, 30))
-        # axs[0, 0].imshow(im[..., ::-1])
-        # axs[0, 0].set_xticks([])
-        # axs[0, 0].set_yticks([])
-        # axs[0, 1].imshow(seg_map_per_image[..., 0])
-        # axs[0, 1].set_xticks([])
-        # axs[0, 1].set_yticks([])
-        # axs[0, 2].imshow(seg_map_per_image[..., 1])
-        # axs[0, 2].set_xticks([])
-        # axs[0, 2].set_yticks([])
-        # axs[1, 0].imshow(seg_map_per_image[..., 2])
-        # axs[1, 0].set_xticks([])
-        # axs[1, 0].set_yticks([])
-        # axs[1, 1].imshow(seg_map_per_image[..., 3])
-        # axs[1, 1].set_xticks([])
-        # axs[1, 1].set_yticks([])
-        # axs[1, 2].imshow(seg_map_per_image[..., 4])
-        # axs[1, 2].set_xticks([])
-        # axs[1, 2].set_yticks([])
-        # axs[2, 0].imshow(seg_map_per_image[..., 5])
-        # axs[2, 0].set_xticks([])
-        # axs[2, 0].set_yticks([])
-        # axs[2, 1].imshow(training_mask)
-        # axs[2, 1].set_xticks([])
-        # axs[2, 1].set_yticks([])
-        # plt.tight_layout()
-        # plt.show()
-        # plt.close()
+    # debug调试用的 原图 6张图 &掩码图
+    fig, axs = plt.subplots(3, 3, figsize=(20, 30))
+    axs[0, 0].imshow(im[..., ::-1])
+    axs[0, 0].set_xticks([])
+    axs[0, 0].set_yticks([])
+    axs[0, 1].imshow(seg_map_per_image[..., 0])
+    axs[0, 1].set_xticks([])
+    axs[0, 1].set_yticks([])
+    axs[0, 2].imshow(seg_map_per_image[..., 1])
+    axs[0, 2].set_xticks([])
+    axs[0, 2].set_yticks([])
+    axs[1, 0].imshow(seg_map_per_image[..., 2])
+    axs[1, 0].set_xticks([])
+    axs[1, 0].set_yticks([])
+    axs[1, 1].imshow(seg_map_per_image[..., 3])
+    axs[1, 1].set_xticks([])
+    axs[1, 1].set_yticks([])
+    axs[1, 2].imshow(seg_map_per_image[..., 4])
+    axs[1, 2].set_xticks([])
+    axs[1, 2].set_yticks([])
+    axs[2, 0].imshow(seg_map_per_image[..., 5])
+    axs[2, 0].set_xticks([])
+    axs[2, 0].set_yticks([])
+    axs[2, 1].imshow(training_mask)
+    axs[2, 1].set_xticks([])
+    axs[2, 1].set_yticks([])
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
 
 def get_batch(num_workers, **kwargs):
