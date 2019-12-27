@@ -50,7 +50,6 @@ def get_data_reader():
         获取应该用数据读取器 TODO
     :return:
     """
-    logger.info("data type : %r",FLAGS.data_type)
     if FLAGS.data_type =='icdar':
         real_reader = data_reader.Icdar2015Reader()
     else:

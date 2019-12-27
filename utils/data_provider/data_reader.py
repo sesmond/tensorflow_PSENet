@@ -46,11 +46,9 @@ class Icdar2015Reader(BaseReader):
            :return:
         """
         label = line[-1]
-        # x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
-        # text_polys.append([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])
-        temp_poly = []
-        for idx in range(0, len(line) - 1, 2):
-            temp_poly.append([float(line[idx]), float(line[idx + 1])])
+        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
+        temp_poly = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+
         if label == '*' or label == '###' or label == '?':
             tag = True
         else:

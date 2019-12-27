@@ -181,12 +181,11 @@ def main(argv=None):
             data = next(data_generator)
             logger.info("训练步数:%d ,获取数据完毕，准备训练", step)
 
-            # 每步提取10张图片
-            # TODO
+            # 每步训练10张样本
             ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
                                                                                 input_seg_maps: data[2],
                                                                                 input_training_masks: data[3]})
-            logger.info("训练步数:%d ,训练完成，model loss: %d", step,ml)
+            logger.info("训练步数:%d ,训练完成，model loss: %f ,total loss: %f", step,ml,tl)
             # 为null
             if np.isnan(tl):
                 logger.error('Loss diverged, stop training')
