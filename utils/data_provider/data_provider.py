@@ -25,6 +25,7 @@ text_path = './data/ctw1500/train/text_label_curve/'
 # text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
 from utils.data_provider import data_reader
 
+tf.app.flags.DEFINE_string('data_type', '', 'dataset type') #必须指定
 # TODO 设成啥
 tf.app.flags.DEFINE_string('training_data_path', image_path,
                            'training dataset to use')
@@ -49,10 +50,11 @@ def get_data_reader():
         获取应该用数据读取器 TODO
     :return:
     """
-    if True:
-        real_reader = data_reader.Ctw1500Reader()
-    else:
+    logger.info("data type : %r",FLAGS.data_type)
+    if FLAGS.data_type =='icdar':
         real_reader = data_reader.Icdar2015Reader()
+    else:
+        real_reader = data_reader.Ctw1500Reader()
     return real_reader
 
 
