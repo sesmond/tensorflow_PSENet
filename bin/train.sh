@@ -37,7 +37,7 @@ echo "生产模式,使用GPU#$1"
 nohup \
 python -m train \
 --name=psenet \
---save_summary_steps =50 \
+--save_summary_steps=50 \
 --gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=32 \
 --checkpoint_path=./model/ctw1500 \
