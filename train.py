@@ -203,10 +203,13 @@ def main(argv=None):
                 model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
                 saver.save(sess, model_save_path, global_step=global_step)
             # 每100 次算一下损失函数写入tensorboard
-            if step % FLAGS.save_summary_steps == 0:
+            # if step % FLAGS.save_summary_steps == 0:
+            if step % 2 == 0: #TODO debug用多写几次看看
+                #TODO !!  这里主要是为了执行summary_op 吧
                 _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
                                                                                              input_seg_maps: data[2],
                                                                                              input_training_masks: data[3]})
+                logger.debug("summary_str: %r",summary_str)
                 summary_writer.add_summary(summary_str, global_step=step)
 
 
