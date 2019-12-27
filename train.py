@@ -213,7 +213,7 @@ def main(argv=None):
                                                                                              input_training_masks: data[
                                                                                                  3]})
 
-                logger.info("write into board,Step {:06d}, model loss {:.4f}, total loss {:.4f}", step, ml, tl)
+                logger.info("write into board,Step {:06d}, model loss {:.4f}, total loss {:.4f}".format(step, ml, tl))
                 summary_writer.add_summary(summary_str, global_step=step)
 
 
