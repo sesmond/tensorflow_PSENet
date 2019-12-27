@@ -7,6 +7,7 @@ from tensorflow.contrib import slim
 from utils.utils_tool import logger, cfg
 
 tf.app.flags.DEFINE_string('name', 'psenet', '')
+tf.app.flags.DEFINE_string('data_type', '', 'dataset type') #必须指定
 tf.app.flags.DEFINE_integer('input_size', 512, '')
 tf.app.flags.DEFINE_integer('batch_size_per_gpu', 1, '')
 tf.app.flags.DEFINE_integer('num_readers', 1, '')
@@ -15,7 +16,7 @@ tf.app.flags.DEFINE_integer('max_steps', 100000, '')
 # TODO 设置早停loss
 
 tf.app.flags.DEFINE_float('moving_average_decay', 0.997, '')
-tf.app.flags.DEFINE_string('gpu_list', '0', '')
+tf.app.flags.DEFINE_string('gpu_list', '1', '')
 tf.app.flags.DEFINE_string('checkpoint_path', './model/', '')
 tf.app.flags.DEFINE_string('tboard_path', './tboard/', '')
 tf.app.flags.DEFINE_integer('save_checkpoint_steps', 1000, '')
@@ -23,6 +24,7 @@ tf.app.flags.DEFINE_integer('save_summary_steps', 100, '')
 tf.app.flags.DEFINE_boolean('restore', False, 'whether to resotre from checkpoint')
 # TODO 二次训练的旧模型 微调使用
 tf.app.flags.DEFINE_string('pretrained_model_path', None, '')
+
 
 from nets import model
 from utils.data_provider import data_provider
