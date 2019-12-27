@@ -10,6 +10,7 @@
 '''
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import os
 
 
 class BaseReader(metaclass=ABCMeta):
@@ -22,11 +23,21 @@ class BaseReader(metaclass=ABCMeta):
         "从一行样本中解析成box"
         pass
 
+    @abstractmethod
+    def get_text_file_name(self, image_name):
+        "根据图片名找到对应的文件名"
+        pass
+
 
 class Icdar2015Reader(BaseReader):
     """
      Icdar2015 样本读取器
     """
+
+    def get_text_file_name(self, image_name):
+        # 替换后缀名
+        image_name = 'gt_' + os.path.basename(image_name).split('.')[0]+'.txt'
+        return image_name
 
     def load_box(self, line):
         """
@@ -51,6 +62,10 @@ class Ctw1500Reader(BaseReader):
     """
         曲线文本1500读取器
     """
+
+    def get_text_file_name(self, image_name):
+        txt_fn = os.path.basename(image_name).split('.')[0] + '.txt'
+        return txt_fn
 
     def load_box(self, line):
         gt = line

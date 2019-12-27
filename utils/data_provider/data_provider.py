@@ -19,10 +19,10 @@ from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
 
-image_path = './data/ctw1500/train/text_image'
-text_path = './data/ctw1500/train/text_label_curve/'
-# image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
-# text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt/gt_'
+# image_path = './data/ctw1500/train/text_image'
+# text_path = './data/ctw1500/train/text_label_curve/'
+image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
+text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt'
 from utils.data_provider import data_reader
 
 tf.app.flags.DEFINE_string('data_type', '', 'dataset type') #必须指定
@@ -357,7 +357,7 @@ def generator(input_size=512, batch_size=2,
         image_list.shape[0], FLAGS.training_data_path))
     # 索引数组
     index = np.arange(0, image_list.shape[0])
-
+    real_reader  = get_data_reader()
     while True:
         # 随机排序
         np.random.shuffle(index)
@@ -373,14 +373,12 @@ def generator(input_size=512, batch_size=2,
                     logger.info("图像没有找到：%s", im_fn)
                     continue
                 h, w, _ = im.shape
-                # TODO 文本路径
-                # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
-                # txt_fn = os.path.join(os.path.dirname(im_fn),'')
+                # 文本路径+文本名
+                txt_name = real_reader.get_text_file_name(im_fn)
+                txt_fn = os.path.join(FLAGS.training_text_path,txt_name)
 
-                txt_fn = FLAGS.training_text_path + os.path.basename(im_fn).split('.')[0] + '.txt'
-                # print("读取文本：",txt_fn)
-                # 后缀名jpg 换成txt找标注
                 if not os.path.exists(txt_fn):
+                    logger.error("文件：%r ,不存在",txt_fn)
                     continue
                 # text_tags 是否是文本 True False TODO
                 text_polys, text_tags = load_annoataion(txt_fn)
