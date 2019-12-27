@@ -209,7 +209,7 @@ def main(argv=None):
                 _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
                                                                                              input_seg_maps: data[2],
                                                                                              input_training_masks: data[3]})
-                logger.debug("summary_str: %r",summary_str)
+                logger.info("summary_str: %r",summary_str)
                 summary_writer.add_summary(summary_str, global_step=step)
 
 
