@@ -44,8 +44,8 @@ python -m train \
 --name=$train_name \
 --data_type=$data_type \
 --save_summary_steps=50 \
---gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
---num_readers=32 \
+--gpu_list=$1 --input_size=512 --batch_size_per_gpu=16 \
+--num_readers=10 \
 --checkpoint_path=./model/icdar2015 \
 --training_data_path=./data/plate \
 --training_text_path=./data/plate \
