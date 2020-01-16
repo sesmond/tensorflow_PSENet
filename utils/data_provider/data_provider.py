@@ -432,7 +432,7 @@ def generator(input_size=512, batch_size=2,
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
-                    logger.info("获取样本数：%d", len(images))
+                    # logger.info("获取样本数：%d", len(images))
                     # 返回 图片，文件名，gt，mask
                     yield images, image_fns, seg_maps, training_masks
                     images = []
