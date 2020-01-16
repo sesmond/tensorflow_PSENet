@@ -119,7 +119,6 @@ class PlateReader(BaseReader):
     车牌样本读取 TODO
     """
     def __parse(self, f_name):
-        print("文件名：",f_name)
         data = f_name.split("-")
 
         four_points = [d.split("&") for d in data[3].split("_")]  # 499&580_409&557_418&525_508&548
@@ -133,7 +132,7 @@ class PlateReader(BaseReader):
         """
                覆盖父类方法
         """
-        #TODO
+        print("文件名：",im_fn)
         points = self.__parse(os.path.basename(im_fn))
         # 文本路径+文本名
         success = True
@@ -147,6 +146,8 @@ class PlateReader(BaseReader):
 
 
 if __name__ == '__main__':
-    f_n = "/image/0065-14_1-409&525_508&580-499&580_409&557_418&525_508&548-0_0_20_30_21_24_24-78-32.jpg"
+    f_n = "/image/1846-2_2-0&440_617&690-616&660_0&690_0&470_617&440-0_0_21_25_6_24_24-74-79.jpg"
     reader = PlateReader()
-    reader.get_annotation(f_n,"")
+
+    _,resuylt,_=reader.get_annotation(f_n,"")
+    print(resuylt)
