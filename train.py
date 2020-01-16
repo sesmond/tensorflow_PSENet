@@ -30,7 +30,8 @@ from utils.data_provider import data_provider
 
 FLAGS = tf.app.flags.FLAGS
 
-gpus = list(range(len(FLAGS.gpu_list.split(','))))
+# gpus = list(range(FLAGS.gpu_list.split(',')))
+gpus = FLAGS.gpu_list.split(',')
 
 logger.setLevel(cfg.debug)
 
@@ -118,7 +119,6 @@ def main(argv=None):
 
     tower_grads = []
     reuse_variables = None
-    print("所有可用gpu：",gpus)
     for i, gpu_id in enumerate(gpus):
         logger.info("使用gpu：%r",gpu_id)
         with tf.device('/gpu:%d' % gpu_id):
