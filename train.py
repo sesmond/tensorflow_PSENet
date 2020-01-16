@@ -119,6 +119,7 @@ def main(argv=None):
     tower_grads = []
     reuse_variables = None
     for i, gpu_id in enumerate(gpus):
+        logger.info("使用gpu：%r",gpu_id)
         with tf.device('/gpu:%d' % gpu_id):
             with tf.name_scope('model_%d' % gpu_id) as scope:
                 iis = input_images_split[i]
