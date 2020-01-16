@@ -133,7 +133,6 @@ class PlateReader(BaseReader):
                覆盖父类方法
         """
         try:
-
             points = self.__parse(os.path.basename(im_fn))
         except Exception:
             print("文件名：", im_fn)
@@ -168,7 +167,7 @@ def test1():
         files.extend(glob.glob(os.path.join("./data/plate", '*', '*.{}'.format(ext))))
     reader = PlateReader()
     for f in files:
-        reader.get_annotation(f)
+        reader.get_annotation(f,"")
 
 
 if __name__ == '__main__':
