@@ -118,6 +118,7 @@ def main(argv=None):
 
     tower_grads = []
     reuse_variables = None
+    print("所有可用gpu：",gpus)
     for i, gpu_id in enumerate(gpus):
         logger.info("使用gpu：%r",gpu_id)
         with tf.device('/gpu:%d' % gpu_id):
