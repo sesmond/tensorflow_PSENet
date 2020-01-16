@@ -132,8 +132,12 @@ class PlateReader(BaseReader):
         """
                覆盖父类方法
         """
-        print("文件名：",im_fn)
-        points = self.__parse(os.path.basename(im_fn))
+        try:
+
+            points = self.__parse(os.path.basename(im_fn))
+        except Exception:
+            print("文件名：", im_fn)
+            return False,None,None
         # 文本路径+文本名
         success = True
         return success,np.array([points], dtype=np.float32), np.array([True], dtype=np.bool)
@@ -145,9 +149,32 @@ class PlateReader(BaseReader):
         return None
 
 
-if __name__ == '__main__':
-    f_n = "/image/1846-2_2-0&440_617&690-616&660_0&690_0&470_617&440-0_0_21_25_6_24_24-74-79.jpg"
-    reader = PlateReader()
 
-    _,resuylt,_=reader.get_annotation(f_n,"")
-    print(resuylt)
+def test1():
+    '''
+    获取后缀名为exts的所有文件
+    TODO 路径training_data_path 没做参数也没校验
+    :param exts:
+    :return:
+    '''
+    import glob
+    exts=['jpg']
+    files = []
+    # TODO 可以有多个路径
+    for ext in exts:
+        # glob.glob 得到所有文件名
+        # 一层 2层子目录都取出来
+        files.extend(glob.glob(os.path.join("./data/plate", '*.{}'.format(ext))))
+        files.extend(glob.glob(os.path.join("./data/plate", '*', '*.{}'.format(ext))))
+    reader = PlateReader()
+    for f in files:
+        reader.get_annotation(f)
+
+
+if __name__ == '__main__':
+    # f_n = "/image/1846-2_2-0&440_617&690-616&660_0&690_0&470_617&440-0_0_21_25_6_24_24-74-79.jpg"
+    # reader = PlateReader()
+    #
+    # _,resuylt,_=reader.get_annotation(f_n,"")
+    # print(resuylt)
+    test1()
