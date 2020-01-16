@@ -128,7 +128,7 @@ def main(argv=None):
                 total_loss, model_loss = tower_loss(iis, isegs, itms, reuse_variables)
                 batch_norm_updates_op = tf.group(*tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope))
                 reuse_variables = True
-
+                #计算梯度
                 grads = opt.compute_gradients(total_loss)
                 tower_grads.append(grads)
 

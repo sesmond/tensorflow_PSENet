@@ -14,15 +14,15 @@ def pse(kernals, min_area=5):
     :param min_area: 保留的最小面积
     :return:
     '''
-    #TODO 算了一下这里的kernal是从大到小的，顺序应该反了
-    # return pse_py.pse(kernals,min_area)
+    # TODO 算了一下这里的kernal是从大到小的，顺序应该反了
+    #return pse_py.pse(kernals,min_area)
     # TODO 找不到指定模块？
     from .pse import pse_cpp
     kernal_num = len(kernals)
     if not kernal_num:
         return np.array([]), []
     kernals = np.array(kernals)
-    #https://blog.csdn.net/Vichael_Chan/article/details/100988503
+    # https://blog.csdn.net/Vichael_Chan/article/details/100988503
     # 联通子图
     label_num, label = cv2.connectedComponents(kernals[kernal_num - 1].astype(np.uint8), connectivity=4)
     label_values = []
@@ -31,6 +31,6 @@ def pse(kernals, min_area=5):
             label[label == label_idx] = 0
             continue
         label_values.append(label_idx)
-    print("label:",label.shape)
+    print("label:", label.shape)
     pred = pse_cpp(label, kernals, c=6)
     return pred, label_values

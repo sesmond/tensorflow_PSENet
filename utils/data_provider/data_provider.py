@@ -6,7 +6,6 @@ import os
 import glob
 import time
 import json
-import csv
 import traceback
 import cv2
 import matplotlib
@@ -21,11 +20,15 @@ import pyclipper
 
 # image_path = './data/ctw1500/train/text_image'
 # text_path = './data/ctw1500/train/text_label_curve/'
-image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
-text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt'
+# image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
+# text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt'
+
+image_path = './data/plate'
+text_path = './data/plate'
+
 from utils.data_provider import data_reader
 
-tf.app.flags.DEFINE_string('data_type', '', 'dataset type') #必须指定
+tf.app.flags.DEFINE_string('data_type', 'plate', 'dataset type') #必须指定
 # TODO 设成啥
 tf.app.flags.DEFINE_string('training_data_path', image_path,
                            'training dataset to use')
@@ -52,8 +55,12 @@ def get_data_reader():
     """
     if FLAGS.data_type =='icdar':
         real_reader = data_reader.Icdar2015Reader()
-    else:
+    elif FLAGS.data_type=='ctw':
         real_reader = data_reader.Ctw1500Reader()
+    elif FLAGS.data_type=='plate':
+        real_reader = data_reader.PlateReader()
+    else:
+        real_reader = data_reader.PlateReader()
     return real_reader
 
 
@@ -65,10 +72,12 @@ def get_files(exts):
     :return:
     '''
     files = []
+    #TODO 可以有多个路径
     for ext in exts:
         # glob.glob 得到所有文件名
-        files.extend(glob.glob(
-            os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
+        #一层 2层子目录都取出来
+        files.extend(glob.glob(os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
+        files.extend(glob.glob(os.path.join(FLAGS.training_data_path,'*', '*.{}'.format(ext))))
     return files
 
 
@@ -84,30 +93,6 @@ def get_json_label():
                     label[k] = v
     return label
 
-
-def load_annoataion(p):
-    '''
-    load annotation from the text file
-    # 从标注文件中读取 坐标
-    :param p:
-    :return:
-    '''
-    text_polys = []
-    text_tags = []
-    if not os.path.exists(p):
-        return np.array(text_polys, dtype=np.float32)
-
-    real_reader = get_data_reader()
-    with open(p, 'r') as f:
-        reader = csv.reader(f)
-        for line in reader:
-            # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
-            line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
-            # TODO 解析样本行
-            temp_poly, temp_tag = real_reader.load_box(line)
-            text_polys.append(temp_poly)
-            text_tags.append(temp_tag)
-        return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
 
 
 def check_and_validate_polys(polys, tags, xxx_todo_changeme):
@@ -356,7 +341,7 @@ def generator(input_size=512, batch_size=2,
         image_list.shape[0], FLAGS.training_data_path))
     # 索引数组
     index = np.arange(0, image_list.shape[0])
-    real_reader  = get_data_reader()
+    real_reader = get_data_reader()
     while True:
         # 随机排序
         np.random.shuffle(index)
@@ -372,15 +357,23 @@ def generator(input_size=512, batch_size=2,
                     logger.info("图像没有找到：%s", im_fn)
                     continue
                 h, w, _ = im.shape
-                # 文本路径+文本名
-                txt_name = real_reader.get_text_file_name(im_fn)
-                txt_fn = os.path.join(FLAGS.training_text_path,txt_name)
+                #TODO  根据图片名生成文本!!!
 
-                if not os.path.exists(txt_fn):
-                    logger.error("文件：%r ,不存在",txt_fn)
+
+                # 文本路径+文本名
+                # txt_name = real_reader.get_text_file_name(im_fn)
+                # txt_fn = os.path.join(FLAGS.training_text_path,txt_name)
+                #
+                # if not os.path.exists(txt_fn):
+                #     logger.error("文件：%r ,不存在",txt_fn)
+                #     continue
+                # # text_tags 是否是文本 True False TODO
+                # text_polys, text_tags = load_annoataion(txt_fn)
+
+                success,text_polys, text_tags  = real_reader.get_annotation(im_fn,FLAGS.training_text_path)
+                if not success:
+                    logger.error("没有解析到文本框：%r ,",im_fn)
                     continue
-                # text_tags 是否是文本 True False TODO
-                text_polys, text_tags = load_annoataion(txt_fn)
                 # 按原样读取
                 if text_polys.shape[0] == 0:
                     continue
@@ -390,11 +383,12 @@ def generator(input_size=512, batch_size=2,
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 # TODO debug竟然卡死在这里！
-                im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale)
+                print("resize:",im.shape,rd_scale)
+                im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
-                if np.random.rand() < background_ratio:
-                    # if np.random.rand() < 2:
+                # if np.random.rand() < background_ratio:
+                if np.random.rand() < 2:
                     # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     # 如果切出来的图里有文本则舍弃掉继续
@@ -409,6 +403,9 @@ def generator(input_size=512, batch_size=2,
                     # max_h_w_i = np.max([new_h, new_w, input_size])
                     im_padded = np.zeros((new_h, new_w, 3), dtype=np.uint8)
                     im_padded[:new_h, :new_w, :] = im.copy()
+
+                    #TODO
+                    print("resize2:",im_padded.shape,input_size)
                     im = cv2.resize(im_padded, dsize=(input_size, input_size))
                     seg_map_per_image = np.zeros((input_size, input_size, scale_ratio.shape[0]), dtype=np.uint8)
                     training_mask = np.ones((input_size, input_size), dtype=np.uint8)
@@ -522,7 +519,7 @@ def get_batch(num_workers, **kwargs):
 
 
 if __name__ == '__main__':
-    gen = get_batch(num_workers=2, vis=False)
+    gen = get_batch(num_workers=1, vis=True)
     while True:
         images, image_fns, seg_maps, training_masks = next(gen)
 

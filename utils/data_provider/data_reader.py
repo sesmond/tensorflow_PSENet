@@ -11,6 +11,9 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 import os
+import csv
+
+
 
 
 class BaseReader(metaclass=ABCMeta):
@@ -28,6 +31,41 @@ class BaseReader(metaclass=ABCMeta):
         "根据图片名找到对应的文件名"
         pass
 
+    def _load_annotation(self,txt_file):
+        '''
+        load annotation from the text file
+        # 从标注文件中读取 坐标
+        :param txt_file:
+        :return:
+        '''
+        text_polys = []
+        text_tags = []
+        if not os.path.exists(txt_file):
+            return np.array(text_polys, dtype=np.float32)
+
+        with open(txt_file, 'r') as f:
+            reader = csv.reader(f)
+            for line in reader:
+                # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
+                line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
+                # TODO 解析样本行
+                temp_poly, temp_tag = self.load_box(line)
+                text_polys.append(temp_poly)
+                text_tags.append(temp_tag)
+            return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
+
+    def get_annotation(self,im_fn,txt_path):
+        # 文本路径+文本名
+        txt_name = self.get_text_file_name(im_fn)
+        txt_fn = os.path.join(txt_path, txt_name)
+        success = True
+
+        if not os.path.exists(txt_fn):
+            # logger.error("文件：%r ,不存在", txt_fn)
+            success = False
+        # text_tags 是否是文本 True False
+        text_polys, text_tags = self._load_annotation(txt_fn)
+        return success,text_polys, text_tags
 
 class Icdar2015Reader(BaseReader):
     """
@@ -77,3 +115,49 @@ class Ctw1500Reader(BaseReader):
         for idx in range(0, len(bbox) - 1, 2):
             new_box.append([float(bbox[idx]), float(bbox[idx + 1])])
         return np.array(new_box), False
+
+
+class PlateReader(BaseReader):
+    """
+    车牌样本读取 TODO
+    """
+    def _parse(self, f_name):
+        data = f_name.split("-")
+
+        four_points = [d.split("&") for d in data[3].split("_")]  # 499&580_409&557_418&525_508&548
+        points = []
+        for p in four_points:
+            points.append([int(fp) for fp in p])
+
+        # province = provinces[int(plate[0])]
+        # plate_id = "".join([ads[int(index)] for index in plate])
+        # plate = province + plate_id
+
+        print("解析: ", points)
+
+        return points
+
+    def get_annotation(self,im_fn,txt_path):
+        """
+               覆盖父类方法
+        """
+        #TODO
+        points = self._parse(os.path.basename(im_fn))
+        # 文本路径+文本名
+        success = True
+        return success,np.array([points], dtype=np.float32), np.array([True], dtype=np.bool)
+
+
+
+    def get_text_file_name(self, image_name):
+        return None
+
+
+    def load_box(self, line):
+        return None
+
+
+if __name__ == '__main__':
+    f_name = "/image/0065-14_1-409&525_508&580-499&580_409&557_418&525_508&548-0_0_20_30_21_24_24-78-32.jpg"
+    reader = PlateReader()
+    reader.get_annotation(f_name,"")

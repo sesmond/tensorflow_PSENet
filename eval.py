@@ -146,7 +146,8 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         # plt.imshow(mask_res_resized)
         # plt.show()
 
-        boxes.append(new_box)
+        # boxes.append(new_box)
+        boxes.append(box)
 
     return np.array(boxes), kernals, timer
 
