@@ -47,7 +47,7 @@ python -m train \
 --save_summary_steps=10 \
 --gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=10 \
---checkpoint_path=./model/icdar2015 \
+--checkpoint_path=./model/plate \
 --training_data_path=./data/plate \
 --training_text_path=./data/plate \
 >> ./logs/psenet_plate_$1_$Date.log 2>&1 &

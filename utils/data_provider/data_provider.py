@@ -370,6 +370,7 @@ def generator(input_size=512, batch_size=2,
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 # TODO debug竟然卡死在这里！
+                # print("resize:",im.shape,rd_scale)
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
@@ -501,8 +502,10 @@ def get_batch(num_workers, **kwargs):
 
 
 if __name__ == '__main__':
-    gen = get_batch(num_workers=1, vis=True)
-    while True:
-        images, image_fns, seg_maps, training_masks = next(gen)
-
-        logger.debug('done')
+    # gen = get_batch(num_workers=1, vis=True)
+    # while True:
+    #     images, image_fns, seg_maps, training_masks = next(gen)
+    #
+    #     logger.debug('done')
+    print("")
+    generator(vis=True)

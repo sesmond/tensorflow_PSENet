@@ -65,7 +65,6 @@ def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
         tf.summary.image('training_masks', training_masks)
         tf.summary.scalar('model_loss', model_loss)
         tf.summary.scalar('total_loss', total_loss)
-        tf.summary.scalar('test_no', 1)
 
 
     return total_loss, model_loss

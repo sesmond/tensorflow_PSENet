@@ -139,7 +139,7 @@ class PlateReader(BaseReader):
             return False,None,None
         # 文本路径+文本名
         success = True
-        return success,np.array([points], dtype=np.float32), np.array([True], dtype=np.bool)
+        return success,np.array([points], dtype=np.float32), np.array([False], dtype=np.bool)
 
     def get_text_file_name(self, image_name):
         return None

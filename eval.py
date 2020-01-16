@@ -108,7 +108,7 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
     mask_res_resized = cv2.resize(mask_res, (image_w, image_h), interpolation=cv2.INTER_NEAREST)
     boxes = []
     # plt.imshow(mask_res_resized)
-    # plt.show()
+    # ()
 
     for label_value in label_values:
         #(y,x)
