@@ -360,7 +360,7 @@ def generator(input_size=512, batch_size=2,
                 # 根据图片名找到对应样本标注
                 success,text_polys, text_tags  = real_reader.get_annotation(im_fn,FLAGS.training_text_path)
                 if not success:
-                    logger.error("没有解析到文本框：%r ,",im_fn)
+                    # logger.error("没有解析到文本框：%r ,",im_fn)
                     continue
                 # 没有标注框
                 if text_polys.shape[0] == 0:
@@ -373,8 +373,8 @@ def generator(input_size=512, batch_size=2,
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
-                if np.random.rand() < background_ratio:
-                # if np.random.rand() < 2:
+                # if np.random.rand() < background_ratio:
+                if np.random.rand() < 0:
                     # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     # 如果切出来的图里有文本则舍弃掉继续
@@ -491,7 +491,7 @@ def get_batch(num_workers, **kwargs):
                     generator_output = enqueuer.queue.get()
                     break
                 else:
-                    # print("休眠0。01")
+                    # print("休眠0.01")
                     time.sleep(0.01)
             yield generator_output
             generator_output = None
