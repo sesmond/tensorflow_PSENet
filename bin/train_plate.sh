@@ -38,12 +38,13 @@ if [ "$1" = "console" ]; then
     exit
 fi
 
+#TODO save_summary_steps 原来50
 echo "生产模式,使用GPU#$1 #$train_name #$data_type"
 nohup \
 python -m train \
 --name=$train_name \
 --data_type=$data_type \
---save_summary_steps=50 \
+--save_summary_steps=2 \
 --gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=10 \
 --checkpoint_path=./model/icdar2015 \
