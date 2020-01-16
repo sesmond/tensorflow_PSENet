@@ -120,8 +120,9 @@ def main(argv=None):
     tower_grads = []
     reuse_variables = None
     for i, gpu_id in enumerate(gpus):
-        with tf.device('/gpu:%r' % gpu_id):
-            with tf.name_scope('model_%r' % gpu_id) as scope:
+        gpu_id = int(gpu_id)
+        with tf.device('/gpu:%d' % gpu_id):
+            with tf.name_scope('model_%d' % gpu_id) as scope:
                 iis = input_images_split[i]
                 # groundtruth 标注数据
                 isegs = input_seg_maps_split[i]
