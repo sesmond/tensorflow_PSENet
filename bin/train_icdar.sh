@@ -1,4 +1,8 @@
 # 训练icdar数据
+train_name=psenet_icdar2015
+data_type=icdar
+
+
 Date=$(date +%Y%m%d%H%M)
 if [ "$1" = "" ]; then
     echo "train_icadr.sh help|stop|console|gpu"
@@ -12,14 +16,14 @@ fi
 
 if [ "$1" = "stop" ]; then
     echo "停止训练"
-    ps aux|grep python|grep name=psenet|awk '{print $2}'|xargs kill -9
+    ps aux|grep python|grep name=$train_name|awk '{print $2}'|xargs kill -9
     exit
 fi
 
 if [ "$1" = "console" ]; then
     echo "debug模式"
     python -m train \
-    --name=psenet \
+    --name=$train_name \
     --save_summary_steps=2 \
     --save_checkpoint_steps=2 \
     --max_steps=2 \
@@ -36,8 +40,8 @@ fi
 echo "生产模式,使用GPU#$1"
 nohup \
 python -m train \
---name=psenet \
---data_type=icdar \
+--name=$train_name \
+--data_type=$data_type \
 --save_summary_steps=50 \
 --gpu_list=$1 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=32 \
