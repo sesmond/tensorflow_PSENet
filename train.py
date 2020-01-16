@@ -221,7 +221,6 @@ def main(argv=None):
                                                                                                  3]})
 
                 logger.info("write into board,Step {:06d}, model loss {:.4f}, total loss {:.4f}".format(step, ml, tl))
-                print("summary_str:",summary_str)
                 summary_writer.add_summary(summary_str, global_step=step)
 
 
