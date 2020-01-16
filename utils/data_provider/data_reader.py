@@ -135,7 +135,7 @@ class PlateReader(BaseReader):
         try:
             points = self.__parse(os.path.basename(im_fn))
         except Exception:
-            print("文件名：", im_fn)
+            # print("文件名：", im_fn)
             return False,None,None
         # 文本路径+文本名
         success = True

@@ -373,8 +373,8 @@ def generator(input_size=512, batch_size=2,
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
-                # if np.random.rand() < background_ratio:
-                if np.random.rand() < 2:
+                if np.random.rand() < background_ratio:
+                # if np.random.rand() < 2:
                     # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     # 如果切出来的图里有文本则舍弃掉继续
