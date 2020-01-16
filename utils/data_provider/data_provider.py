@@ -357,33 +357,19 @@ def generator(input_size=512, batch_size=2,
                     logger.info("图像没有找到：%s", im_fn)
                     continue
                 h, w, _ = im.shape
-                #TODO  根据图片名生成文本!!!
-
-
-                # 文本路径+文本名
-                # txt_name = real_reader.get_text_file_name(im_fn)
-                # txt_fn = os.path.join(FLAGS.training_text_path,txt_name)
-                #
-                # if not os.path.exists(txt_fn):
-                #     logger.error("文件：%r ,不存在",txt_fn)
-                #     continue
-                # # text_tags 是否是文本 True False TODO
-                # text_polys, text_tags = load_annoataion(txt_fn)
-
+                # 根据图片名找到对应样本标注
                 success,text_polys, text_tags  = real_reader.get_annotation(im_fn,FLAGS.training_text_path)
                 if not success:
                     logger.error("没有解析到文本框：%r ,",im_fn)
                     continue
-                # 按原样读取
+                # 没有标注框
                 if text_polys.shape[0] == 0:
                     continue
-                # TODO
                 text_polys, text_tags = check_and_validate_polys(text_polys, text_tags, (h, w))
-                # TODO 这是要缩放图片吗？是为了放大字体营造样本多样性？
+                # 这是要缩放图片吗？是为了放大字体营造样本多样性？
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 # TODO debug竟然卡死在这里！
-                print("resize:",im.shape,rd_scale)
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
@@ -403,9 +389,6 @@ def generator(input_size=512, batch_size=2,
                     # max_h_w_i = np.max([new_h, new_w, input_size])
                     im_padded = np.zeros((new_h, new_w, 3), dtype=np.uint8)
                     im_padded[:new_h, :new_w, :] = im.copy()
-
-                    #TODO
-                    print("resize2:",im_padded.shape,input_size)
                     im = cv2.resize(im_padded, dsize=(input_size, input_size))
                     seg_map_per_image = np.zeros((input_size, input_size, scale_ratio.shape[0]), dtype=np.uint8)
                     training_mask = np.ones((input_size, input_size), dtype=np.uint8)
@@ -433,7 +416,6 @@ def generator(input_size=512, batch_size=2,
                     new_h, new_w, _ = im.shape
                     # plt.imshow(im)
                     # plt.show()
-                    # #TODO
                     seg_map_per_image, training_mask = generate_seg((new_h, new_w), text_polys, text_tags,
                                                                     image_list[i], scale_ratio)
                     if not len(seg_map_per_image):

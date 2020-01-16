@@ -14,30 +14,27 @@ import os
 import csv
 
 
-
-
 class BaseReader(metaclass=ABCMeta):
     """
-
+     坐标读取基类
     """
-
     @abstractmethod
     def load_box(self, line):
-        "从一行样本中解析成box"
+        """从一行样本中解析成box"""
         pass
 
     @abstractmethod
     def get_text_file_name(self, image_name):
-        "根据图片名找到对应的文件名"
+        """根据图片名找到对应的文件名"""
         pass
 
     def _load_annotation(self,txt_file):
-        '''
+        """
         load annotation from the text file
         # 从标注文件中读取 坐标
         :param txt_file:
         :return:
-        '''
+        """
         text_polys = []
         text_tags = []
         if not os.path.exists(txt_file):
@@ -121,19 +118,13 @@ class PlateReader(BaseReader):
     """
     车牌样本读取 TODO
     """
-    def _parse(self, f_name):
+    def __parse(self, f_name):
         data = f_name.split("-")
 
         four_points = [d.split("&") for d in data[3].split("_")]  # 499&580_409&557_418&525_508&548
         points = []
         for p in four_points:
             points.append([int(fp) for fp in p])
-
-        # province = provinces[int(plate[0])]
-        # plate_id = "".join([ads[int(index)] for index in plate])
-        # plate = province + plate_id
-
-        print("解析: ", points)
 
         return points
 
@@ -142,16 +133,13 @@ class PlateReader(BaseReader):
                覆盖父类方法
         """
         #TODO
-        points = self._parse(os.path.basename(im_fn))
+        points = self.__parse(os.path.basename(im_fn))
         # 文本路径+文本名
         success = True
         return success,np.array([points], dtype=np.float32), np.array([True], dtype=np.bool)
 
-
-
     def get_text_file_name(self, image_name):
         return None
-
 
     def load_box(self, line):
         return None

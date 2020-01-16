@@ -51,5 +51,3 @@ python -m train \
 --training_text_path=./data/plate \
 >> ./logs/psenet_plate_$1_$Date.log 2>&1 &
 echo "启动完毕"
-#--pretrained_model_path=./model/pred/model.ckpt \
-#--training_data_path=./data/ocr/icdar2015/dar2015/
