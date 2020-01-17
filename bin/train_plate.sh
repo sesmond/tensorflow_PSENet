@@ -50,6 +50,6 @@ python -m train \
 --checkpoint_path=./model/plate \
 --training_data_path=./data/plate \
 --training_text_path=./data/plate \
---restore=True
+--restore=True \
 >> ./logs/psenet_plate_$1_$Date.log 2>&1 &
 echo "启动完毕"
