@@ -122,21 +122,34 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         binary = np.zeros(mask_res_resized.shape, dtype='uint8')
         binary[mask_res_resized == label_value] = 1
         #TODO !!
+        # https://www.cnblogs.com/GaloisY/p/11062065.html
         _, contours, _ = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        # 如果距离小于第二个参数的点则被舍弃掉 适合正方形不适合矩形
+        # dp_poly  =cv2.approxPolyDP(curve=points,epsilon=10,closed=True)
+
+
+        # 检测四边形：
+        # https://stackoverflow.com/questions/37942132/opencv-detect-quadrilateral-in-python
+
         #TODO!!
         if len(contours)<=0:
             continue
         contour = contours[0]
+        #TODO
 
-        bbox = contour
+        hull = cv2.convexHull(contour)
+
+
+        bbox = hull
         if bbox.shape[0] <= 2:
             continue
         else:
-            print("多边形：",bbox.shape,bbox)
+            print("多边形：",bbox.shape)
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
         new_box = bbox.reshape(-1,2) # 转换成2点坐标
-        print("new_box and box :\n", new_box,box)
+        # print("new_box and box :\n", new_box,box)
         #TODO 画图并展示
         pts = np.array(new_box, np.int32)
         pts = pts.reshape(-1,1,2)
@@ -146,8 +159,8 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         # plt.imshow(mask_res_resized)
         # plt.show()
 
-        # boxes.append(new_box)
-        boxes.append(box)
+        boxes.append(new_box)
+        # boxes.append(box)
 
     return np.array(boxes), kernals, timer
 
@@ -190,6 +203,88 @@ def show_score_geo(color_im, kernels, im_res):
     fig.show()
 
 
+# 调用前向运算来计算
+def predict_by_network(params,img):
+    # 还原各类张量
+    t_input_images = params["input_images"]
+    t_seg_maps_pred = params["seg_maps_pred"]
+    session = params["session"]
+    g = params["graph"]
+
+    with g.as_default():
+        logger.debug("通过session预测：%r",img.shape)
+        seg_maps = session.run(t_seg_maps_pred, feed_dict={t_input_images: [img]})
+
+    return seg_maps
+
+
+# 定义图，并且还原模型，创建session
+def initialize():
+    params = {}
+    g = tf.get_default_graph()
+    with g.as_default():
+        input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
+        global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
+        seg_maps_pred = model.model(input_images, is_training=False)
+
+        variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
+        saver = tf.train.Saver(variable_averages.variables_to_restore())
+        sess =  tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+        print("checkpoint path:",FLAGS.checkpoint_path)
+        ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
+        model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
+        logger.info('Restore from {}'.format(model_path))
+        saver.restore(sess, model_path)
+
+        params["input_images"] = input_images
+        params["seg_maps_pred"] = seg_maps_pred
+        params["session"] = sess
+        params["graph"] = g
+
+    return params
+
+
+def pred(params, im, im_fn):
+    """
+        预测单张图片
+    :param params: tensorflow 参数
+    :param im: 图像文件BGR
+    :param im_fn: 文件名（打日志用）
+    :return: 返回单张图片的文字区域坐标 TODO 把几点坐标做成动态的
+    """
+    # 色彩转换 BGR 转 RGB
+    im_new = im[:, :, ::-1]
+    start_time = time.time()
+    im_resized, (ratio_h, ratio_w) = resize_image(im_new)
+    h, w, _ = im_resized.shape
+    # options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE)
+    # run_metadata = tf.RunMetadata()
+    timer = {'net': 0, 'pse': 0}
+    start = time.time()
+    # resnet预测得到F（S1，...S6）
+    seg_maps = predict_by_network(params, im_resized)
+    timer['net'] = time.time() - start
+    # pse算法后处理，合并多层预测结果为一个框
+    boxes, kernels, timer = detect(seg_maps=seg_maps, timer=timer, image_w=w, image_h=h)
+    # print("pse后box：", boxes.shape)
+    logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
+        im_fn, timer['net'] * 1000, timer['pse'] * 1000))
+    # TODO!!!
+    if boxes is not None:
+        # TODO 缩放比例
+        # boxes = boxes.reshape((-1, -1, 2))
+        h, w, _ = im_new.shape
+        # 图片大小还原
+        for box in boxes:
+            box[:, 0] = box[:, 0] / ratio_w
+            box[:, 1] = box[:, 1] / ratio_h
+            # 最小是0，最大是h？ 操作完之后防止产生小于0 大于边界的值
+            box[:, 0] = np.clip(box[:, 0], 0, w)
+            box[:, 1] = np.clip(box[:, 1], 0, h)
+    duration = time.time() - start_time
+    logger.info('[timing] {}'.format(duration))
+    return boxes
+
 def main(argv=None):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
@@ -200,96 +295,43 @@ def main(argv=None):
         if e.errno != 17:
             raise
 
-    with tf.get_default_graph().as_default():
-        input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
-        global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
-        seg_maps_pred = model.model(input_images, is_training=False)
+    params = initialize()
 
-        variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
-        saver = tf.train.Saver(variable_averages.variables_to_restore())
-        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-            print("model path:",FLAGS.checkpoint_path)
-            ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
-            model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
-            logger.info('Restore from {}'.format(model_path))
-            saver.restore(sess, model_path)
+    #TODO 遍历所有图片预测
+    im_fn_list = get_images()
+    for im_fn in im_fn_list:
+        logger.debug('image file:{}'.format(im_fn))
+        im = cv2.imread(im_fn)
+        # 预测
+        boxes = pred(params, im, im_fn)
 
-            #TODO 遍历所有图片预测
-            im_fn_list = get_images()
-            for im_fn in im_fn_list:
-                im = cv2.imread(im_fn)[:, :, ::-1]
-                logger.debug('image file:{}'.format(im_fn))
+        # save to file
+        if boxes is not None:
+            res_file = os.path.join(
+                FLAGS.output_dir,
+                '{}.txt'.format(os.path.splitext(os.path.basename(im_fn))[0]))
+            with open(res_file, 'w') as f:
+                num =0
+                for i in range(len(boxes)):
+                    # to avoid submitting errors
+                    box = boxes[i]
+                    print("预测box：",box)
+                    #TODO
+                    # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
+                    #     continue
 
-                start_time = time.time()
-                im_resized, (ratio_h, ratio_w) = resize_image(im)
-                h, w, _ = im_resized.shape
-                # options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE)
-                # run_metadata = tf.RunMetadata()
-                timer = {'net': 0, 'pse': 0}
-                start = time.time()
-                # resnet预测得到F（S1，...S6）
-                seg_maps = sess.run(seg_maps_pred, feed_dict={input_images: [im_resized]})
-                timer['net'] = time.time() - start
-                # fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-                # chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                # with open(os.path.join(FLAGS.output_dir, os.path.basename(im_fn).split('.')[0]+'.json'), 'w') as f:
-                #     f.write(chrome_trace)
-                #TODO 转换出预测框！！！ pse算法后处理
-                boxes, kernels, timer = detect(seg_maps=seg_maps, timer=timer, image_w=w, image_h=h)
-                print("pse后box：",boxes.shape)
+                    num += 1
+                    # 左下开始逆时针坐标： 左下 左上 右上 右下 ，还是四点坐标
+                    f.write('{},{},{},{},{},{},{},{}\r\n'.format(
+                        box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]))
+                    # 划线
+                    cv2.polylines(im, [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
 
-                logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
-                    im_fn, timer['net']*1000, timer['pse']*1000))
-                #TODO!!!
-                if boxes is not None:
-                    #TODO 缩放比例
-                    # boxes = boxes.reshape((-1, -1, 2))
-                    h, w, _ = im.shape
+        if not FLAGS.no_write_images:
+            img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
+            cv2.imwrite(img_path, im)
+        # show_score_geo(im_resized, kernels, im)
 
-                    for box in boxes:
-                        box[:, 0] = box[:, 0]/ratio_w
-                        box[:, 1] = box[:, 1]/ratio_h
-                        # 最小是0，最大是h？ 操作完之后防止产生小于0 大于边界的值
-                        box[:, 0] = np.clip(box[:, 0], 0, w)
-                        box[:, 1] = np.clip(box[:, 1], 0, h)
 
-                    # boxes[:, :, 0] = boxes[:, :, 0]/ratio_w
-                    # boxes[:, :, 1] = boxes[:, :, 0]/ratio_h
-                    # # 最小是0，最大是h？ 操作完之后防止产生小于0 大于边界的值
-                    # boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w)
-                    # boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h)
-
-                duration = time.time() - start_time
-                logger.info('[timing] {}'.format(duration))
-                #TODO
-                # save to file
-                if boxes is not None:
-                    res_file = os.path.join(
-                        FLAGS.output_dir,
-                        '{}.txt'.format(os.path.splitext(
-                            os.path.basename(im_fn))[0]))
-
-                    with open(res_file, 'w') as f:
-                        num =0
-                        for i in range(len(boxes)):
-                            # to avoid submitting errors
-                            box = boxes[i]
-                            print("预测box：",box)
-                            #TODO
-                            # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
-                            #     continue
-
-                            num += 1
-                            # 左下开始逆时针坐标： 左下 左上 右上 右下 ，还是四点坐标
-                            f.write('{},{},{},{},{},{},{},{}\r\n'.format(
-                                box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]))
-                            #TODO 划线 多余4点坐标
-                            cv2.polylines(im[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
-                        # plt.imshow(im[:, :, ::-1])
-                        # plt.show()
-                if not FLAGS.no_write_images:
-                    img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
-                    cv2.imwrite(img_path, im[:, :, ::-1])
-                # show_score_geo(im_resized, kernels, im)
 if __name__ == '__main__':
     tf.app.run()
