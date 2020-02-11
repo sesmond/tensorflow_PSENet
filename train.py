@@ -192,10 +192,6 @@ def main(argv=None):
 
     init = tf.global_variables_initializer()
 
-    if FLAGS.pretrained_model_path is not None:
-        variable_restore_op = slim.assign_from_checkpoint_fn(FLAGS.pretrained_model_path,
-                                                             slim.get_trainable_variables(),
-                                                             ignore_missing_vars=True)
     gpu_options = tf.GPUOptions(allow_growth=True)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
         if FLAGS.restore:
@@ -205,9 +201,9 @@ def main(argv=None):
         else:
             sess.run(init)
             #TODO !!!? 预训练和恢复不一样，恢复是从自己训练的上一个里面恢复
-            # 预训练是指定模型加载进来继续训练
-            if FLAGS.pretrained_model_path is not None:
-                variable_restore_op(sess)
+            # 预训练是指定模型加载进来继续训练 ！！
+            # if FLAGS.pretrained_model_path is not None:
+                # variable_restore_op(sess)
 
         data_generator = data_provider.get_batch(num_workers=FLAGS.num_readers,
                                                  input_size=FLAGS.input_size,

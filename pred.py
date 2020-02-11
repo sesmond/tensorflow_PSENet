@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from utils.utils_tool import logger, cfg
 from pse import pse
 from utils import plate_utils
+from utils import model_util
 
 tf.app.flags.DEFINE_string('test_data_path', './data/pred/input', '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
@@ -177,25 +178,7 @@ def predict_by_network(params,img):
 
 # 定义图，并且还原模型，创建session
 def initialize():
-    params = {}
-    g = tf.get_default_graph()
-    with g.as_default():
-        #从pb模型直接恢复
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        # #TODO !!!
-        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "./model/plate/100004")
-        signature = meta_graph_def.signature_def
-        in_tensor_name = signature['serving_default'].inputs['input_data'].name
-        out_tensor_name = signature['serving_default'].outputs['output'].name
-
-        input_images = sess.graph.get_tensor_by_name(in_tensor_name)
-        seg_maps_pred = sess.graph.get_tensor_by_name(out_tensor_name)
-
-        params["input_images"] = input_images
-        params["seg_maps_pred"] = seg_maps_pred
-        params["session"] = sess
-        params["graph"] = g
-    return params
+    return  model_util.restore_model("./model/plate/100004")
 
 
 def pred(params, im, im_fn):

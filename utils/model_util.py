@@ -11,7 +11,6 @@
 模型转换 ckpt > pb
 """
 import os
-
 import tensorflow as tf
 
 from nets import model
@@ -55,17 +54,32 @@ def save_model(sess,global_step,save_mod_dir):
     builder.save()
     print("转换模型结束", save_mod_dir)
 
+
+def restore_model_by_dir(model_path):
+    """
+        从目录下寻找最新的模型加载
+    :param model_path:
+    :return:
+    """
+    f_list = os.listdir(model_path)
+    dirs = [i for i in f_list if os.path.isdir(os.path.join(model_path, i))]
+    max_dir = max(dirs)
+    return restore_model(max_dir)
+
+
 def restore_model(model_path):
-    #TODO 配置地址
-    print("")
-    #TODO 寻找最新模型
+    """
+        直接指定模型
+    :param model_path:
+    :return:
+    """
+    print("恢复模型：",model_path)
     params={}
     g = tf.get_default_graph()
     with g.as_default():
         #从pb模型直接恢复
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        # #TODO !!!
-        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "./model/plate/100004")
+        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], model_path)
         signature = meta_graph_def.signature_def
         in_tensor_name = signature['serving_default'].inputs['input_data'].name
         out_tensor_name = signature['serving_default'].outputs['output'].name
