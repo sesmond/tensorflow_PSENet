@@ -196,6 +196,7 @@ def main(argv=None):
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
         if FLAGS.restore:
             logger.info('continue training from previous model')
+            sess.run(init)
             model_util.restore(sess,FLAGS.checkpoint_path)
             # sess = params['session']
         else:
