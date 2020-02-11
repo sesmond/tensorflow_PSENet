@@ -1,10 +1,12 @@
 import time
 import datetime
-
+import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
 from utils.utils_tool import logger, cfg
+from utils.early_stop import EarlyStop
+from utils import model_util
 
 tf.app.flags.DEFINE_string('name', 'psenet', '')
 tf.app.flags.DEFINE_integer('input_size', 512, '')
@@ -47,12 +49,10 @@ def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
     """
     # Build inference graph
     # 加载模型
-    print("seg_maps_gt:", seg_maps_gt.shape)
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables):
         seg_maps_pred = model.model(images, is_training=True)
-    # TODO 损失函数
+    # 损失函数
     model_loss = model.loss(seg_maps_gt, seg_maps_pred, training_masks)
-    # TODO
     total_loss = tf.add_n([model_loss] + tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
     # add summary
@@ -65,7 +65,6 @@ def tower_loss(images, seg_maps_gt, training_masks, reuse_variables=None):
         tf.summary.image('training_masks', training_masks)
         tf.summary.scalar('model_loss', model_loss)
         tf.summary.scalar('total_loss', total_loss)
-
 
     return total_loss, model_loss
 
@@ -88,8 +87,46 @@ def average_gradients(tower_grads):
     return average_grads
 
 
+def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate,train_start_time):
+    """
+    早停
+    :param early_stop:
+    :param f1_value:
+    :param saver:
+    :param sess:
+    :param step:
+    :param learning_rate:
+    :param train_start_time:
+    :return:
+    """
+    decision = early_stop.decide(f1_value)
+
+    if decision == EarlyStop.ZERO: # 当前F1是0，啥也甭说了，继续训练
+        return False
+
+    if decision == EarlyStop.CONTINUE:
+        logger.info("新F1值比最好的要小，继续训练...")
+        return False
+
+    if decision == EarlyStop.BEST:
+        logger.info("新F1值[%f]大于过去最好的F1值，早停计数器重置，并保存模型", f1_value)
+        save_model(saver, sess, step)
+        return False
+
+    if decision == EarlyStop.STOP:
+        logger.warning("超过早停最大次数，也尝试了多次学习率Decay，无法在提高：第%d次，训练提前结束", step)
+        return True
+
+    if decision == EarlyStop.LEARNING_RATE_DECAY:
+        logger.info("学习率(learning rate)衰减：%f=>%f", learning_rate.eval(), learning_rate.eval() * FLAGS.decay_rate)
+        sess.run(tf.assign(learning_rate, learning_rate.eval() * FLAGS.decay_rate))
+        return False
+
+    logger.error("无法识别的EarlyStop结果：%r",decision)
+    return True
+
+
 def main(argv=None):
-    import os
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
     if not tf.gfile.Exists(FLAGS.checkpoint_path):
         tf.gfile.MkDir(FLAGS.checkpoint_path)
@@ -147,7 +184,7 @@ def main(argv=None):
     with tf.control_dependencies([variables_averages_op, apply_gradient_op, batch_norm_updates_op]):
         train_op = tf.no_op(name='train_op')  # 什么都不做，仅做为点位符使用控制边界。TODO
 
-    saver = tf.train.Saver(tf.global_variables())
+    # saver = tf.train.Saver(tf.global_variables())
     today = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     summary_dir = os.path.join(FLAGS.tboard_path, today)
     # tboard PATH
@@ -160,15 +197,15 @@ def main(argv=None):
                                                              slim.get_trainable_variables(),
                                                              ignore_missing_vars=True)
     gpu_options = tf.GPUOptions(allow_growth=True)
-    # gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
         if FLAGS.restore:
-            logger.info('continue training from previous checkpoint')
-            ckpt = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
-            logger.debug(ckpt)
-            saver.restore(sess, ckpt)
+            logger.info('continue training from previous model')
+            params = model_util.restore_model(FLAGS.checkpoint_path)
+            sess = params['session']
         else:
             sess.run(init)
+            #TODO !!!? 预训练和恢复不一样，恢复是从自己训练的上一个里面恢复
+            # 预训练是指定模型加载进来继续训练
             if FLAGS.pretrained_model_path is not None:
                 variable_restore_op(sess)
 
@@ -195,23 +232,18 @@ def main(argv=None):
                 break
 
             if step % 10 == 0:
-                # 每10次打一次日志？
+                # 每10次打一次日志
                 avg_time_per_step = (time.time() - start) / 10
                 avg_examples_per_second = (10 * FLAGS.batch_size_per_gpu * len(gpus)) / (time.time() - start)
                 start = time.time()
-                # TODO
                 logger.info(
                     'Step {:06d}, model loss {:.4f}, total loss {:.4f}, {:.2f} seconds/step, {:.2f} examples/second'.format(
                         step, ml, tl, avg_time_per_step, avg_examples_per_second))
 
-            # 每1000次保存一次模型
+            # 每1000次保存一次模型 TODO 早停 判断准确率以及是否早停
             if step % FLAGS.save_checkpoint_steps == 0:
                 # TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
-                # 模型名为了不冲突最好加上别的名字
-                train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
-                model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(tl))
-                model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
-                saver.save(sess, model_save_path, global_step=global_step)
+                save_model(global_step,sess,tl)
             # 每100 次算一下损失函数写入tensorboard
             if step % FLAGS.save_summary_steps == 0:
                 # TODO !!  这里主要是为了执行summary_op 吧
@@ -222,6 +254,15 @@ def main(argv=None):
 
                 logger.info("write into board,Step {:06d}, model loss {:.4f}, total loss {:.4f}".format(step, ml, tl))
                 summary_writer.add_summary(summary_str, global_step=step)
+
+
+def save_model(global_step, sess, tl):
+    # 模型名为了不冲突最好加上别的名字
+    # train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
+    # model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(tl))
+    # model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
+    # saver.save(sess, model_save_path, global_step=global_step)
+    model_util.save_model(sess,global_step,FLAGS.checkpoint_path)
 
 
 if __name__ == '__main__':

@@ -159,8 +159,8 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         # plt.imshow(mask_res_resized)
         # plt.show()
 
-        boxes.append(new_box)
-        # boxes.append(box)
+        # boxes.append(new_box)
+        boxes.append(box)
 
     return np.array(boxes), kernals, timer
 
@@ -223,18 +223,27 @@ def initialize():
     params = {}
     g = tf.get_default_graph()
     with g.as_default():
-        input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
-        global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
-        seg_maps_pred = model.model(input_images, is_training=False)
+        #https://blog.csdn.net/JerryZhang__/article/details/85058005
+        # input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
+        # global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
+        # seg_maps_pred = model.model(input_images, is_training=False)
+        #
+        # variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
+        # saver = tf.train.Saver(variable_averages.variables_to_restore())
+        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+        # print("checkpoint path:",FLAGS.checkpoint_path)
+        # ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
+        # model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
+        # logger.info('Restore from {}'.format(model_path))
+        # saver.restore(sess, model_path)
+        # #TODO !!!
+        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "./model/plate/100004")
+        signature = meta_graph_def.signature_def
+        in_tensor_name = signature['serving_default'].inputs['input_data'].name
+        out_tensor_name = signature['serving_default'].outputs['output'].name
 
-        variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
-        saver = tf.train.Saver(variable_averages.variables_to_restore())
-        sess =  tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        print("checkpoint path:",FLAGS.checkpoint_path)
-        ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
-        model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
-        logger.info('Restore from {}'.format(model_path))
-        saver.restore(sess, model_path)
+        input_images = sess.graph.get_tensor_by_name(in_tensor_name)
+        seg_maps_pred = sess.graph.get_tensor_by_name(out_tensor_name)
 
         params["input_images"] = input_images
         params["seg_maps_pred"] = seg_maps_pred
@@ -331,6 +340,7 @@ def main(argv=None):
             img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
             cv2.imwrite(img_path, im)
         # show_score_geo(im_resized, kernels, im)
+
 
 
 if __name__ == '__main__':

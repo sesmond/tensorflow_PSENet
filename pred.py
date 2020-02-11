@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from utils.utils_tool import logger, cfg
 from pse import pse
-
+from utils import plate_utils
 
 tf.app.flags.DEFINE_string('test_data_path', './data/pred/input', '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
@@ -130,12 +130,9 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         if len(contours)<=0:
             continue
         contour = contours[0]
-        #TODO
+        #TODO 寻找凸包
+        bbox = cv2.convexHull(contour)
 
-        hull = cv2.convexHull(contour)
-
-
-        bbox = hull
         if bbox.shape[0] <= 2:
             continue
         else:
@@ -143,6 +140,10 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
         new_box = bbox.reshape(-1,2) # 转换成2点坐标
+        area, v1, v2, v3, v4, _, _ = plate_utils.mep(new_box)
+        box = [v1, v2, v3, v4]
+        box = np.array(box)
+
         # print("new_box and box :\n", new_box,box)
         #TODO 画图并展示
         pts = np.array(new_box, np.int32)
@@ -276,6 +277,13 @@ def main(argv=None):
                         box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]))
                     # 划线
                     cv2.polylines(im, [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
+                    #TODO 测试转换后的小图
+
+                    warped = plate_utils.four_point_transform(im,box)
+                    img_path = os.path.join(FLAGS.output_dir, "plate_" + os.path.basename(im_fn) + str(i) + ".jpg")
+                    cv2.imwrite(img_path, warped)
+
+
 
         if not FLAGS.no_write_images:
             img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
