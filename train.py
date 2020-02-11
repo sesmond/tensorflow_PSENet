@@ -196,8 +196,8 @@ def main(argv=None):
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
         if FLAGS.restore:
             logger.info('continue training from previous model')
-            params = model_util.restore_model_by_dir(FLAGS.checkpoint_path)
-            sess = params['session']
+            model_util.restore(sess,FLAGS.checkpoint_path)
+            # sess = params['session']
         else:
             sess.run(init)
             #TODO !!!? 预训练和恢复不一样，恢复是从自己训练的上一个里面恢复

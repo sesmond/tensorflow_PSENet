@@ -68,6 +68,20 @@ def restore_model_by_dir(model_path):
     return restore_model(os.path.join(model_path, max_dir))
 
 
+def restore(sess,model_path):
+    """
+        直接指定模型
+    :param model_path:
+    :return:
+    """
+    f_list = os.listdir(model_path)
+    dirs = [i for i in f_list if os.path.isdir(os.path.join(model_path, i))]
+    max_dir = max(dirs)
+    real_path =os.path.join(model_path, max_dir)
+
+    tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], real_path)
+
+
 def restore_model(model_path):
     """
         直接指定模型
