@@ -64,7 +64,7 @@ def restore_model_by_dir(model_path):
     f_list = os.listdir(model_path)
     dirs = [i for i in f_list if os.path.isdir(os.path.join(model_path, i))]
     max_dir = max(dirs)
-    return restore_model(max_dir)
+    return restore_model(os.path.join(model_path, max_dir))
 
 
 def restore_model(model_path):
