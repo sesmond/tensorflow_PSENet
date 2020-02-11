@@ -25,7 +25,7 @@ def save_model(sess,global_step,save_mod_dir):
             save_mod_dir = cur
             break
     # tf.get_variable_scope().reuse_variables()
-    # tf.reset_default_graph()
+    tf.reset_default_graph()
     # 定义张量
     input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
     seg_maps_pred = model.model(input_images, is_training=False)
