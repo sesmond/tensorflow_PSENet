@@ -79,6 +79,8 @@ def restore_model(model_path):
     with g.as_default():
         #从pb模型直接恢复
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+        init = tf.global_variables_initializer()
+        sess.run(init)
         meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], model_path)
         signature = meta_graph_def.signature_def
         in_tensor_name = signature['serving_default'].inputs['input_data'].name
