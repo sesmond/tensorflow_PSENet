@@ -9,7 +9,7 @@ from utils.early_stop import EarlyStop
 
 from nets import model
 from utils.data_provider import data_provider
-import validate
+# import validate
 
 tf.app.flags.DEFINE_string('name', 'psenet', '')
 tf.app.flags.DEFINE_integer('input_size', 512, '')
