@@ -17,18 +17,18 @@ from nets import model
 
 
 
-def save_model(sess,global_step,save_mod_dir):
+def save_model(sess,global_step,save_mod_dir,input_images,seg_maps_pred):
     # 每次转换都生成一个版本目录
     for i in range(100000, 9999999):
         cur = os.path.join(save_mod_dir, str(i))
         if not tf.gfile.Exists(cur):
             save_mod_dir = cur
             break
-    tf.get_variable_scope().reuse_variables()
+    # tf.get_variable_scope().reuse_variables()
     # tf.reset_default_graph()
     # 定义张量
-    input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
-    seg_maps_pred = model.model(input_images, is_training=False)
+    # input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
+    # seg_maps_pred = model.model(input_images, is_training=False)
     # 保存转换训练好的模型
     builder = tf.saved_model.builder.SavedModelBuilder(save_mod_dir)
     inputs = {
@@ -78,7 +78,9 @@ def restore(sess,model_path):
     dirs = [i for i in f_list if os.path.isdir(os.path.join(model_path, i))]
     max_dir = max(dirs)
     real_path =os.path.join(model_path, max_dir)
-
+    print("恢复模型:",real_path)
+    # tf.reset_default_graph()
+    tf.get_variable_scope().reuse_variables()
     tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], real_path)
 
 
@@ -89,6 +91,7 @@ def restore_model(model_path):
     :return:
     """
     print("恢复模型：",model_path)
+    # tf.reset_default_graph()
     params={}
     g = tf.get_default_graph()
     with g.as_default():

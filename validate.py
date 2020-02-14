@@ -47,13 +47,9 @@ def get_images():
     logger.info('Find {} images'.format(len(files)))
     return files
 
-
 def validate(params):
     # TODO 批量验证数据 计算F1 recall等
-    #  = eval.predict_by_network(params,"")
-
     im_fn_list = get_images()
-    params = pred.initialize()
 
     # 计算IOU 大于0.7的就算预测正确
     cnt_true= 0 # 正确条数 TODO 召回率
@@ -61,11 +57,14 @@ def validate(params):
         logger.debug('image file:{}'.format(im_fn))
         im = cv2.imread(im_fn)
         boxes = pred.pred(params,im,im_fn)
+
         # TODO 如果多个框找一个
-        # TODO 找相应的样本坐标
+        # TODO 找相应的样本坐标 多对多
 
         iou = cal_iou(gt_box,boxes)
         print("图片 IOU:",iou)
+    F1 = ""
+    return F1
 
 
 def cal_iou(box_a, box_b):
@@ -107,3 +106,5 @@ def cal_iou(box_a, box_b):
 if __name__ == '__main__':
     # tf.app.run()
     cal_iou()
+    params = pred.initialize()
+    validate(params)
