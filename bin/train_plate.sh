@@ -34,6 +34,7 @@ if [ "$1" = "console" ]; then
     --batch_size_per_gpu=1 \
     --checkpoint_path=./model/plate \
     --training_data_path=./data/plate \
+    --restore=True \
     --training_text_path=./data/plate/
     exit
 fi
