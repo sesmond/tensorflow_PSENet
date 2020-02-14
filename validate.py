@@ -17,9 +17,9 @@ from shapely.geometry import Polygon, MultiPoint  # 多边形
 # TODO 验证集数据
 import pred
 
-tf.app.flags.DEFINE_string('validate_data_path', './data/pred/input', '')
-tf.app.flags.DEFINE_string('gpu_list', '0', '')
-tf.app.flags.DEFINE_string('checkpoint_path', './model', '')
+# tf.app.flags.DEFINE_string('validate_data_path', './data/pred/input', '')
+# tf.app.flags.DEFINE_string('gpu_list', '0', '')
+# tf.app.flags.DEFINE_string('checkpoint_path', './model', '')
 
 FLAGS = tf.app.flags.FLAGS
 
