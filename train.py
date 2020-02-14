@@ -17,6 +17,7 @@ tf.app.flags.DEFINE_integer('batch_size_per_gpu', 1, '')
 tf.app.flags.DEFINE_integer('num_readers', 1, '')
 tf.app.flags.DEFINE_float('learning_rate', 0.00001, '')
 tf.app.flags.DEFINE_integer('max_steps', 100000, '')
+tf.app.flags.DEFINE_integer('early_stop', 100, '')
 # TODO 设置早停loss
 
 tf.app.flags.DEFINE_float('moving_average_decay', 0.997, '')
