@@ -66,12 +66,13 @@ def validate(params):
         boxes = pred.pred(params, im, im_fn)
         for box in boxes:
             iou = cal_iou(gt_box, box)
-            if iou > 0.5:
+            logger.info("图片 ：%s,iou:%r", os.path.basename(im_fn), iou)
+            if iou > 0.7:
                 logger.info("图片 ：%s,iou:%r ,识别正确！",os.path.basename(im_fn),iou)
                 cnt_true += 1
                 break
-        print("图片 IOU:",iou)
-    F1 = cnt_true /len(im_fn_list)
+    logger.info("验证图片总数：%r,验证正确总条数：%r",cnt_true)
+    F1 = cnt_true / len(im_fn_list)
     return F1
 
 
