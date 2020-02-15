@@ -148,6 +148,32 @@ class PlateReader(BaseReader):
         return None
 
 
+class PlateOwnReader(BaseReader):
+    """
+      自己的车牌读取器：坐标格式 ( x1, y1, x2, y2, x3, y3, x4, y4 ,车牌) 类似Icadar
+    """
+
+    def get_text_file_name(self, image_name):
+        # 替换后缀名
+        image_name = 'gt_' + os.path.basename(image_name).split('.')[0]+'.txt'
+        return image_name
+
+    def load_box(self, line):
+        """
+           icadr 2015样本 4点坐标
+           :param line:
+           :return:
+        """
+        label = line[-1]
+        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
+        temp_poly = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+
+        if label == '*' or label == '###' or label == '?':
+            tag = True
+        else:
+            tag = False
+        return temp_poly, tag
+
 
 def test1():
     '''
@@ -168,6 +194,7 @@ def test1():
     reader = PlateReader()
     for f in files:
         reader.get_annotation(f,"")
+
 
 
 if __name__ == '__main__':

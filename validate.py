@@ -17,9 +17,8 @@ from shapely.geometry import Polygon, MultiPoint  # 多边形
 # TODO 验证集数据
 import pred
 
-# tf.app.flags.DEFINE_string('validate_data_path', './data/pred/input', '')
-# tf.app.flags.DEFINE_string('gpu_list', '0', '')
-# tf.app.flags.DEFINE_string('checkpoint_path', './model', '')
+tf.app.flags.DEFINE_string('validate_img_path', './data/plate_new/test/test_img', '')
+tf.app.flags.DEFINE_string('validate_txt_path', './data/plate_new/test/test_txt', '')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -30,7 +29,6 @@ logger.setLevel(cfg.debug)
 """
 
 
-
 def get_images():
     '''
     find image files in test data path
@@ -38,7 +36,7 @@ def get_images():
     '''
     files = []
     exts = ['jpg', 'png', 'jpeg', 'JPG']
-    for parent, dirnames, filenames in os.walk(FLAGS.test_data_path):
+    for parent, dirnames, filenames in os.walk(FLAGS.validate_img_path):
         for filename in filenames:
             for ext in exts:
                 if filename.endswith(ext):
@@ -52,18 +50,28 @@ def validate(params):
     im_fn_list = get_images()
 
     # 计算IOU 大于0.7的就算预测正确
-    cnt_true= 0 # 正确条数 TODO 召回率
+    cnt_true = 0 # 正确条数 TODO 召回率
     for im_fn in im_fn_list:
         logger.debug('image file:{}'.format(im_fn))
         im = cv2.imread(im_fn)
-        boxes = pred.pred(params,im,im_fn)
 
-        # TODO 如果多个框找一个
-        # TODO 找相应的样本坐标 多对多
+        base_name = os.path.splitext(os.path.basename(im_fn))[0]
+        txt_p = os.path.join(FLAGS.validate_txt_path, base_name+ ".txt")
+        line = open(txt_p).readlines()[0]
+        # line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
+        line = list( map(float,line.split(",")[:-1]))
+        gt_box = np.array(line).reshape(4,2)
+        # gt_box = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
 
-        iou = cal_iou(gt_box,boxes)
+        boxes = pred.pred(params, im, im_fn)
+        for box in boxes:
+            iou = cal_iou(gt_box, box)
+            if iou > 0.5:
+                logger.info("图片 ：%s,iou:%r ,识别正确！",os.path.basename(im_fn),iou)
+                cnt_true += 1
+                break
         print("图片 IOU:",iou)
-    F1 = ""
+    F1 = cnt_true /len(im_fn_list)
     return F1
 
 
@@ -105,6 +113,6 @@ def cal_iou(box_a, box_b):
 
 if __name__ == '__main__':
     # tf.app.run()
-    cal_iou()
     params = pred.initialize()
-    validate(params)
+    F1 =validate(params)
+    print("正确率：",F1)

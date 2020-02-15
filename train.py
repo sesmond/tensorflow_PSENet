@@ -16,9 +16,9 @@ tf.app.flags.DEFINE_integer('input_size', 512, '')
 tf.app.flags.DEFINE_integer('batch_size_per_gpu', 1, '')
 tf.app.flags.DEFINE_integer('num_readers', 1, '')
 tf.app.flags.DEFINE_float('learning_rate', 0.00001, '')
-tf.app.flags.DEFINE_integer('max_steps', 100000, '')
+tf.app.flags.DEFINE_integer('max_steps', 200000, '')
+# TODO 设置早停loss 100个批次（一批1000，也就是10万次不优化就停下来）
 tf.app.flags.DEFINE_integer('early_stop', 100, '')
-# TODO 设置早停loss
 
 tf.app.flags.DEFINE_float('moving_average_decay', 0.997, '')
 tf.app.flags.DEFINE_string('gpu_list', '1', '')
@@ -219,7 +219,7 @@ def main(argv=None):
                                                              slim.get_trainable_variables(),
                                                              ignore_missing_vars=True)
     gpu_options = tf.GPUOptions(allow_growth=True)
-    # early_stop = EarlyStop(FLAGS.early_stop)
+    early_stop = EarlyStop(FLAGS.early_stop)
 
     # gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
@@ -269,10 +269,7 @@ def main(argv=None):
             # 每1000次保存一次模型
             if step % FLAGS.save_checkpoint_steps == 0:
                 # TODO savemodel
-                train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
-                model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(tl))
-                model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
-                saver.save(sess, model_save_path, global_step=step)
+
 
                 # TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
                 # TODO 验证正确率 !!!!
@@ -287,9 +284,9 @@ def main(argv=None):
                 #           tf.assign(v_precision, precision_value)])
                 # logger.info("在第%d步，模型评估结束，耗时：%f，f1=%f,recall=%f,precision=%f", step, time.time() - validate_start,
                 #             f1_value, recall_value, precision_value)
-                # if is_need_early_stop(early_stop, f1_value, saver, sess, step, learning_rate):
-                #     logger.info("触发早停条件，训练提前终止！")
-                #     break
+                if is_need_early_stop(early_stop, tl, saver, sess, step, learning_rate):
+                    logger.info("触发早停条件，训练提前终止！")
+                    break
 
 
             # 每100 次算一下损失函数写入tensorboard
@@ -302,6 +299,13 @@ def main(argv=None):
 
                 logger.info("write into board,Step {:06d}, model loss {:.4f}, total loss {:.4f}".format(step, ml, tl))
                 summary_writer.add_summary(summary_str, global_step=step)
+
+
+def save_model(saver, sess, step, tl):
+    train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
+    model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(tl))
+    model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
+    saver.save(sess, model_save_path, global_step=step)
 
 
 if __name__ == '__main__':
