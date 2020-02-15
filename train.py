@@ -278,6 +278,7 @@ def main(argv=None):
                 logger.info("在第%d步，开始进行模型评估", step)
                 # # data[4]是大框的坐标，是个数组，8个值
                 params={}
+                params['graph'] = tf.get_default_graph()
                 params['session'] = sess
                 params['input_images'] = input_images
                 params['seg_maps_pred'] = seg_maps_pred
