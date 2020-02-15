@@ -136,8 +136,7 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
 
         if bbox.shape[0] <= 2:
             continue
-        else:
-            print("多边形：",bbox.shape)
+
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
         new_box = bbox.reshape(-1,2) # 转换成2点坐标

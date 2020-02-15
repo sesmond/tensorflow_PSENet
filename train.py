@@ -87,6 +87,8 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
     :param learning_rate:
     :return:
     """
+    save_model(saver,sess,step,f1_value)
+
     decision = early_stop.decide(f1_value)
 
     if decision == EarlyStop.ZERO: # 当前F1是0，啥也甭说了，继续训练
@@ -98,12 +100,7 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
 
     if decision == EarlyStop.BEST:
         logger.info("新F1值[%f]大于过去最好的F1值，早停计数器重置，并保存模型", f1_value)
-        save_model(saver,sess,step,f1_value)
-        # TODO savemodel
-        train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
-        model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(f1_value))
-        model_save_path = os.path.join(FLAGS.checkpoint_path, model_name)
-        saver.save(sess, model_save_path, global_step=step)
+        # save_model(saver,sess,step,f1_value)
         # TODO 保存pb
         return False
 

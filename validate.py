@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.python.client import timeline
 from utils.utils_tool import logger, cfg
 import matplotlib.pyplot as plt
-
+from  utils import plate_utils
 import shapely
 from shapely.geometry import Polygon, MultiPoint  # 多边形
 
@@ -65,8 +65,9 @@ def validate(params):
 
         boxes = pred.pred(params, im, im_fn)
         for box in boxes:
-            iou = cal_iou(gt_box, box)
-            print("gt_box,box",gt_box,box)
+            warped = plate_utils.four_point_transform(im, box)
+            iou = cal_iou(gt_box, warped)
+            print("gt_box,box",gt_box,warped)
             logger.info("图片 ：%s,iou:%r", os.path.basename(im_fn), iou)
             if iou > 0.7:
                 logger.info("图片 ：%s,iou:%r ,识别正确！",os.path.basename(im_fn),iou)
