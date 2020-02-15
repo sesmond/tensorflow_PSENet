@@ -495,8 +495,8 @@ def _debug_show(vis, im, seg_map_per_image, training_mask):
 
 def get_batch(num_workers, **kwargs):
     try:
-        enqueuer = GeneratorEnqueuer(generator(**kwargs), use_multiprocessing=False)
-        enqueuer.start(max_queue_size=10, workers=num_workers)
+        enqueuer = GeneratorEnqueuer(generator(**kwargs), use_multiprocessing=True)
+        enqueuer.start(max_queue_size=24, workers=num_workers)
         generator_output = None
         while True:
             while enqueuer.is_running():

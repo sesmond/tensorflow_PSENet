@@ -1,16 +1,16 @@
 # 训练车牌检测数据
-train_name=psenet_plate
-data_type=plate
+train_name=psenet_finetune_plate
+data_type=plate_own
 
 
 Date=$(date +%Y%m%d%H%M)
 if [ "$1" = "" ]; then
-    echo "train_plate.sh help|stop|console|gpu"
+    echo "train_plate_finetune.sh help|stop|console|gpu"
     exit
 fi
 
 if [ "$1" = "help" ]; then
-    echo "train_icadr.sh help|stop|gpu"
+    echo "train_plate_finetune.sh help|stop|gpu"
     exit
 fi
 
