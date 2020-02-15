@@ -71,7 +71,7 @@ def validate(params):
                 logger.info("图片 ：%s,iou:%r ,识别正确！",os.path.basename(im_fn),iou)
                 cnt_true += 1
                 break
-    logger.info("验证图片总数：%r,验证正确总条数：%r",cnt_true)
+    logger.info("验证图片总数：%r,验证正确总条数：%r",len(im_fn_list),cnt_true)
     F1 = cnt_true / len(im_fn_list)
     return F1
 
