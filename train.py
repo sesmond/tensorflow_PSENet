@@ -9,7 +9,7 @@ from utils.early_stop import EarlyStop
 
 from nets import model
 from utils.data_provider import data_provider
-# import validate
+import validate
 
 tf.app.flags.DEFINE_string('name', 'psenet', '')
 tf.app.flags.DEFINE_integer('input_size', 512, '')
@@ -98,6 +98,7 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
 
     if decision == EarlyStop.BEST:
         logger.info("新F1值[%f]大于过去最好的F1值，早停计数器重置，并保存模型", f1_value)
+        save_model(saver,sess,step,f1_value)
         # TODO savemodel
         train_start_time = time.strftime('%Y%m%d-%H%M', time.localtime(time.time()))
         model_name = 'model_{:s}.ckpt-{:s}'.format(str(train_start_time), str(f1_value))
@@ -273,18 +274,21 @@ def main(argv=None):
 
                 # TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
                 # TODO 验证正确率 !!!!
-                # validate_start = time.time()
-                # logger.info("在第%d步，开始进行模型评估", step)
+                validate_start = time.time()
+                logger.info("在第%d步，开始进行模型评估", step)
                 # # data[4]是大框的坐标，是个数组，8个值
-                # f1_value, recall_value, precision_value = \
-                #     validate.validate(sess, input_images,seg_maps_pred)
+                params={}
+                params['session'] = sess
+                params['input_images'] = input_images
+                params['seg_maps_pred'] = seg_maps_pred
+                f1_value= validate.validate(params)
                 # # 更新F1,Recall和Precision
                 # sess.run([tf.assign(v_f1, f1_value),
                 #           tf.assign(v_recall, recall_value),
                 #           tf.assign(v_precision, precision_value)])
-                # logger.info("在第%d步，模型评估结束，耗时：%f，f1=%f,recall=%f,precision=%f", step, time.time() - validate_start,
-                #             f1_value, recall_value, precision_value)
-                if is_need_early_stop(early_stop, tl, saver, sess, step, learning_rate):
+                logger.info("在第%d步，模型评估结束，耗时：%f，f1=%f", step, time.time() - validate_start,
+                            f1_value)
+                if is_need_early_stop(early_stop, f1_value, saver, sess, step, learning_rate):
                     logger.info("触发早停条件，训练提前终止！")
                     break
 
