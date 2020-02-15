@@ -33,9 +33,9 @@ if [ "$1" = "console" ]; then
     --gpu_list=1 --input_size=512 \
     --batch_size_per_gpu=1 \
     --checkpoint_path=./model/plate \
-    --training_data_path=./data/plate \
     --restore=True \
-    --training_text_path=./data/plate/
+    --training_data_path=./data/plate_new/enhance/enhance_images \
+    --training_text_path=./data/plate_new/enhance/enhance_txt \
     exit
 fi
 
