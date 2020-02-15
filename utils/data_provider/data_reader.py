@@ -155,8 +155,8 @@ class PlateOwnReader(BaseReader):
 
     def get_text_file_name(self, image_name):
         # 替换后缀名
-        image_name = 'gt_' + os.path.basename(image_name).split('.')[0]+'.txt'
-        return image_name
+        txt_name = os.path.basename(image_name).split('.')[0]+'.txt'
+        return txt_name
 
     def load_box(self, line):
         """
