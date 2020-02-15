@@ -11,9 +11,9 @@ from pse import pse
 from utils import plate_utils
 from utils import model_util
 
-tf.app.flags.DEFINE_string('test_data_path', './data/pred/input', '')
-tf.app.flags.DEFINE_string('gpu_list', '0', '')
-tf.app.flags.DEFINE_string('checkpoint_path', './model', '')
+tf.app.flags.DEFINE_string('pred_data_path', './data/pred/input', '')
+tf.app.flags.DEFINE_string('pred_gpu_list', '0', '')
+tf.app.flags.DEFINE_string('pred_model_path', './model', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
 
@@ -29,7 +29,7 @@ def get_images():
     '''
     files = []
     exts = ['jpg', 'png', 'jpeg', 'JPG']
-    for parent, dirnames, filenames in os.walk(FLAGS.test_data_path):
+    for parent, dirnames, filenames in os.walk(FLAGS.pred_data_path):
         for filename in filenames:
             for ext in exts:
                 if filename.endswith(ext):
