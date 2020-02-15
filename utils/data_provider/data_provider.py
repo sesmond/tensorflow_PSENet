@@ -60,7 +60,7 @@ def get_data_reader():
     elif FLAGS.data_type=='plate':
         real_reader = data_reader.PlateReader()
     else:
-        real_reader = data_reader.PlateReader()
+        real_reader = data_reader.PlateOwnReader()
     return real_reader
 
 
@@ -80,6 +80,18 @@ def get_files(exts):
         files.extend(glob.glob(os.path.join(FLAGS.training_data_path,'*', '*.{}'.format(ext))))
     return files
 
+
+def get_dir_images(data_dir):
+    img_files = []
+    exts = ['jpg', 'png', 'jpeg', 'JPG']
+    for parent, dirnames, filenames in os.walk(data_dir):
+        for filename in filenames:
+            for ext in exts:
+                if filename.endswith(ext):
+                    img_files.append(os.path.join(parent, filename))
+                    break
+    logger.debug('在%s找到%d张图片',data_dir,len(img_files))
+    return img_files
 
 def get_json_label():
     label_file_list = get_files(['json'])
@@ -483,8 +495,8 @@ def _debug_show(vis, im, seg_map_per_image, training_mask):
 
 def get_batch(num_workers, **kwargs):
     try:
-        enqueuer = GeneratorEnqueuer(generator(**kwargs), use_multiprocessing=True)
-        enqueuer.start(max_queue_size=24, workers=num_workers)
+        enqueuer = GeneratorEnqueuer(generator(**kwargs), use_multiprocessing=False)
+        enqueuer.start(max_queue_size=10, workers=num_workers)
         generator_output = None
         while True:
             while enqueuer.is_running():
@@ -499,6 +511,7 @@ def get_batch(num_workers, **kwargs):
     finally:
         if enqueuer is not None:
             enqueuer.stop()
+
 
 
 if __name__ == '__main__':
