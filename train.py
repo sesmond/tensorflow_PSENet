@@ -163,12 +163,12 @@ def main(argv=None):
     # opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
 
     # 这个是定义召回率、精确度和F1
-    v_recall = tf.Variable(0.001, trainable=False)
-    v_precision = tf.Variable(0.001, trainable=False)
-    v_f1 = tf.Variable(0.001, trainable=False)
-    tf.summary.scalar("Recall",v_recall)
-    tf.summary.scalar("Precision",v_precision)
-    tf.summary.scalar("F1",v_f1)
+    # v_recall = tf.Variable(0.001, trainable=False)
+    # v_precision = tf.Variable(0.001, trainable=False)
+    # v_f1 = tf.Variable(0.001, trainable=False)
+    # tf.summary.scalar("Recall",v_recall)
+    # tf.summary.scalar("Precision",v_precision)
+    # tf.summary.scalar("F1",v_f1)
 
     # split
     input_images_split = tf.split(input_images, len(gpus))
