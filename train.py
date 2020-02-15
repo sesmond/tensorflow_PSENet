@@ -220,7 +220,7 @@ def main(argv=None):
                                                              slim.get_trainable_variables(),
                                                              ignore_missing_vars=True)
     gpu_options = tf.GPUOptions(allow_growth=True)
-    early_stop = EarlyStop(FLAGS.early_stop)
+    early_stop = EarlyStop(FLAGS.early_stop,1)
 
     # gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
