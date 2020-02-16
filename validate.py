@@ -67,7 +67,7 @@ def validate(params):
 
         boxes = pred.pred(params, im, im_fn)
         for box in boxes:
-            logger.debug('gt_box:%s,box:%s',str(gt_box),str(box))
+            # logger.debug('gt_box:%s,box:%s',str(gt_box),str(box))
             iou = cal_iou(gt_box, box)
             logger.info("图片 ：%s,iou:%r", os.path.basename(im_fn), iou)
             if iou > 0.7:
