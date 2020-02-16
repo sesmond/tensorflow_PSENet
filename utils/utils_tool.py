@@ -3,8 +3,11 @@ from easydict import EasyDict as edict
 import queue as Queue
 import numpy as np
 import cv2
-
-logging.basicConfig()
+level = logging.DEBUG
+logging.basicConfig(
+        format='%(asctime)s : %(levelname)s : %(message)s',
+        level=level,
+        handlers=[logging.StreamHandler()])
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
