@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 level = logging.DEBUG
 logging.basicConfig(
-        format='%(asctime)s : %(levelname)s- %(filename)s-%(lineno)d : %(message)s',
+        format='%(levelname)s: %(asctime)s: %(filename)s:%(lineno)d行： %(message)s',
         level=level,
         handlers=[logging.StreamHandler()])
 logger = logging.getLogger()
