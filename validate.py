@@ -7,9 +7,9 @@ import tensorflow as tf
 from tensorflow.python.client import timeline
 from utils.utils_tool import logger, cfg
 import matplotlib.pyplot as plt
-from  utils import plate_utils
 import shapely
 from shapely.geometry import Polygon, MultiPoint  # 多边形
+import random
 
 # --test_data_path =./ data / pred / input / \
 #                      --checkpoint_path =./ model / \
@@ -46,9 +46,11 @@ def get_images():
     return files
 
 def validate(params):
-    # TODO 批量验证数据 计算F1 recall等
+    # 批量验证数据 计算F1 recall等
     im_fn_list = get_images()
-
+    #TODO 筛选100个
+    im_fn_list = random.sample(im_fn_list,100)
+    logger.info("随机抽取样本数进行验证：%r",len(im_fn_list))
     # 计算IOU 大于0.7的就算预测正确
     cnt_true = 0 # 正确条数 TODO 召回率
     for im_fn in im_fn_list:
