@@ -12,7 +12,7 @@ from utils import plate_utils
 from utils import model_util
 
 tf.app.flags.DEFINE_string('pred_data_path', './data/pred/input', '')
-tf.app.flags.DEFINE_string('pred_gpu_list', '0', '')
+tf.app.flags.DEFINE_string('pred_gpu_list', '1', '')
 tf.app.flags.DEFINE_string('pred_model_path', './model', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
@@ -177,7 +177,7 @@ def predict_by_network(params,img):
 
 # 定义图，并且还原模型，创建session
 def initialize():
-    return  model_util.restore_model("./model/plate/100004")
+    return  model_util.restore_model("./model/plate/100000")
 
 
 def pred(params, im, im_fn):
@@ -220,7 +220,7 @@ def pred(params, im, im_fn):
 
 def main(argv=None):
     import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
+    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.pred_gpu_list
 
     try:
         os.makedirs(FLAGS.output_dir)

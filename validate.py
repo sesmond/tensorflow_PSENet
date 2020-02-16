@@ -115,6 +115,7 @@ def cal_iou(box_a, box_b):
 
 if __name__ == '__main__':
     # tf.app.run()
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     params = pred.initialize()
     F1 =validate(params)
     print("正确率：",F1)

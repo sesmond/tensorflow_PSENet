@@ -235,7 +235,7 @@ def initialize():
         # logger.info('Restore from {}'.format(model_path))
         # saver.restore(sess, model_path)
         # #TODO !!!
-        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "./model/plate/100004")
+        meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "model/plate/100000")
         signature = meta_graph_def.signature_def
         in_tensor_name = signature['serving_default'].inputs['input_data'].name
         out_tensor_name = signature['serving_default'].outputs['output'].name
