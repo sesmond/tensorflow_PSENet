@@ -169,7 +169,7 @@ def predict_by_network(params,img):
     g = params["graph"]
 
     with g.as_default():
-        logger.debug("通过session预测：%r",img.shape)
+        # logger.debug("通过session预测：%r",img.shape)
         seg_maps = session.run(t_seg_maps_pred, feed_dict={t_input_images: [img]})
 
     return seg_maps
@@ -216,6 +216,7 @@ def pred(params, im, im_fn):
             box[:, 1] = np.clip(box[:, 1], 0, h)
     duration = time.time() - start_time
     logger.info('[timing] {}'.format(duration))
+    logger.info("pred box len:{}".format(len(boxes)))
     return boxes
 
 def main(argv=None):
