@@ -14,4 +14,4 @@ fi
 echo "开始验证最新模型准确率....."
 
 python  validate.py \
-    --gpu_list=0
+    --pred_gpu_list=1
