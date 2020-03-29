@@ -4,7 +4,7 @@
 @Title   :
 @Title   : 不同格式的样本读取输出相同样本
 @File    :   data_reader.py
-@Author  : minjianxu
+@Author  : vincent
 @Time    : 2019/12/26 6:16 下午
 @Version : 1.0 
 '''
@@ -18,6 +18,7 @@ class BaseReader(metaclass=ABCMeta):
     """
      坐标读取基类
     """
+
     @abstractmethod
     def load_box(self, line):
         """从一行样本中解析成box"""
@@ -28,7 +29,7 @@ class BaseReader(metaclass=ABCMeta):
         """根据图片名找到对应的文件名"""
         pass
 
-    def _load_annotation(self,txt_file):
+    def _load_annotation(self, txt_file):
         """
         load annotation from the text file
         # 从标注文件中读取 坐标
@@ -51,7 +52,7 @@ class BaseReader(metaclass=ABCMeta):
                 text_tags.append(temp_tag)
             return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
 
-    def get_annotation(self,im_fn,txt_path):
+    def get_annotation(self, im_fn, txt_path):
         # 文本路径+文本名
         txt_name = self.get_text_file_name(im_fn)
         txt_fn = os.path.join(txt_path, txt_name)
@@ -62,7 +63,8 @@ class BaseReader(metaclass=ABCMeta):
             success = False
         # text_tags 是否是文本 True False
         text_polys, text_tags = self._load_annotation(txt_fn)
-        return success,text_polys, text_tags
+        return success, text_polys, text_tags
+
 
 class Icdar2015Reader(BaseReader):
     """
@@ -71,7 +73,7 @@ class Icdar2015Reader(BaseReader):
 
     def get_text_file_name(self, image_name):
         # 替换后缀名
-        image_name = 'gt_' + os.path.basename(image_name).split('.')[0]+'.txt'
+        image_name = 'gt_' + os.path.basename(image_name).split('.')[0] + '.txt'
         return image_name
 
     def load_box(self, line):
@@ -118,6 +120,7 @@ class PlateReader(BaseReader):
     """
     车牌样本读取 TODO
     """
+
     def __parse(self, f_name):
         data = f_name.split("-")
 
@@ -128,7 +131,7 @@ class PlateReader(BaseReader):
 
         return points
 
-    def get_annotation(self,im_fn,txt_path):
+    def get_annotation(self, im_fn, txt_path):
         """
                覆盖父类方法
         """
@@ -136,10 +139,10 @@ class PlateReader(BaseReader):
             points = self.__parse(os.path.basename(im_fn))
         except Exception:
             # print("文件名：", im_fn)
-            return False,None,None
+            return False, None, None
         # 文本路径+文本名
         success = True
-        return success,np.array([points], dtype=np.float32), np.array([False], dtype=np.bool)
+        return success, np.array([points], dtype=np.float32), np.array([False], dtype=np.bool)
 
     def get_text_file_name(self, image_name):
         return None
@@ -148,14 +151,14 @@ class PlateReader(BaseReader):
         return None
 
 
-class PlateOwnReader(BaseReader):
+class GeneralReader(BaseReader):
     """
-      自己的车牌读取器：坐标格式 ( x1, y1, x2, y2, x3, y3, x4, y4 ,车牌) 类似Icadar
+      自己的样本读取器：坐标格式 ( x1, y1, x2, y2, x3, y3, x4, y4 ,文本) 类似Icadar
     """
 
     def get_text_file_name(self, image_name):
         # 替换后缀名
-        txt_name = os.path.basename(image_name).split('.')[0]+'.txt'
+        txt_name = os.path.basename(image_name).split('.')[0] + '.txt'
         return txt_name
 
     def load_box(self, line):
@@ -183,7 +186,7 @@ def test1():
     :return:
     '''
     import glob
-    exts=['jpg']
+    exts = ['jpg']
     files = []
     # TODO 可以有多个路径
     for ext in exts:
@@ -193,8 +196,24 @@ def test1():
         files.extend(glob.glob(os.path.join("./data/plate", '*', '*.{}'.format(ext))))
     reader = PlateReader()
     for f in files:
-        reader.get_annotation(f,"")
+        reader.get_annotation(f, "")
 
+
+all_reader = {
+    'icdar': Icdar2015Reader(),
+    'ctw': Ctw1500Reader(),
+    'plate': PlateReader(),
+    'gen': GeneralReader()
+}
+
+
+def get_data_reader(data_type):
+    """
+        获取应该用数据读取器
+    :return:
+    """
+    real_reader = all_reader.get(data_type, GeneralReader())
+    return real_reader
 
 
 if __name__ == '__main__':
@@ -203,4 +222,6 @@ if __name__ == '__main__':
     #
     # _,resuylt,_=reader.get_annotation(f_n,"")
     # print(resuylt)
-    test1()
+    # test1()
+    hello = get_data_reader("gen")
+    print(type(hello))

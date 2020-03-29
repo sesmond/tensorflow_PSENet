@@ -5,7 +5,7 @@
 import os
 import glob
 import time
-import json
+import random
 import traceback
 import cv2
 import matplotlib
@@ -17,23 +17,12 @@ from utils.utils_tool import logger
 from utils.data_provider.data_util import GeneratorEnqueuer
 import tensorflow as tf
 import pyclipper
-
-# image_path = './data/ctw1500/train/text_image'
-# text_path = './data/ctw1500/train/text_label_curve/'
-# image_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_images'
-# text_path = '/Users/minjianxu/Documents/icdar/ICDAR2015/2015ch4_training_localization_transcription_gt'
-
-image_path = './data/plate'
-text_path = './data/plate'
-
 from utils.data_provider import data_reader
 
-tf.app.flags.DEFINE_string('data_type', 'plate', 'dataset type') #必须指定
-# TODO 设成啥
-tf.app.flags.DEFINE_string('training_data_path', image_path,
-                           'training dataset to use')
-tf.app.flags.DEFINE_string('training_text_path', text_path,
-                           'training text box to use')
+
+tf.app.flags.DEFINE_string('data_type', 'plate', 'dataset type')  # 必须指定
+tf.app.flags.DEFINE_string('train_data_config', "cfg/train_data.cfg",
+                           'training data config file ')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
 tf.app.flags.DEFINE_integer('max_text_size', 800,
@@ -48,63 +37,20 @@ tf.app.flags.DEFINE_float('min_crop_side_ratio', 0.1,
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_data_reader():
+def get_files(data_path):
     """
-        获取应该用数据读取器 TODO
+    获取目录下以及子目录下的图片
+    :param data_path:
     :return:
     """
-    if FLAGS.data_type =='icdar':
-        real_reader = data_reader.Icdar2015Reader()
-    elif FLAGS.data_type=='ctw':
-        real_reader = data_reader.Ctw1500Reader()
-    elif FLAGS.data_type=='plate':
-        real_reader = data_reader.PlateReader()
-    else:
-        real_reader = data_reader.PlateOwnReader()
-    return real_reader
-
-
-def get_files(exts):
-    '''
-    获取后缀名为exts的所有文件
-    TODO 路径training_data_path 没做参数也没校验
-    :param exts:
-    :return:
-    '''
     files = []
-    #TODO 可以有多个路径
+    exts = ['jpg', 'png', 'jpeg', 'JPG']
     for ext in exts:
         # glob.glob 得到所有文件名
-        #一层 2层子目录都取出来
-        files.extend(glob.glob(os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
-        files.extend(glob.glob(os.path.join(FLAGS.training_data_path,'*', '*.{}'.format(ext))))
+        # 一层 2层子目录都取出来
+        files.extend(glob.glob(os.path.join(data_path, '*.{}'.format(ext))))
+        files.extend(glob.glob(os.path.join(data_path, '*', '*.{}'.format(ext))))
     return files
-
-
-def get_dir_images(data_dir):
-    img_files = []
-    exts = ['jpg', 'png', 'jpeg', 'JPG']
-    for parent, dirnames, filenames in os.walk(data_dir):
-        for filename in filenames:
-            for ext in exts:
-                if filename.endswith(ext):
-                    img_files.append(os.path.join(parent, filename))
-                    break
-    logger.debug('在%s找到%d张图片',data_dir,len(img_files))
-    return img_files
-
-def get_json_label():
-    label_file_list = get_files(['json'])
-    label = {}
-    for label_file in label_file_list:
-        with open(label_file, 'r') as f:
-            json_label = json.load(f)
-
-            for k, v in json_label.items():
-                if not label.has_key(k):
-                    label[k] = v
-    return label
-
 
 
 def check_and_validate_polys(polys, tags, xxx_todo_changeme):
@@ -336,6 +282,7 @@ def generator(input_size=512, batch_size=2,
               vis=False,
               scale_ratio=np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])):
     '''
+    TODO
     reference from https://github.com/argman/EAST
     :param input_size:
     :param batch_size:
@@ -346,14 +293,22 @@ def generator(input_size=512, batch_size=2,
     :return:
     '''
     # TODO 样本解析为需要的格式
+    # TODO
     # 参与训练的所有图片名
-    image_list = np.array(get_files(['jpg', 'png', 'jpeg', 'JPG']))
+    paths = open(FLAGS.train_data_config, "r").readlines()
+    print("paths:", paths)
+    sel_type = random.choice(paths)
+    sel_type = sel_type.rstrip('\n')
+    print("sel_type:", sel_type)
+    img_path, label_path, data_type = sel_type.split(" ")
+
+    image_list = np.array(get_files(img_path))
 
     logger.info('{} training images in {}'.format(
-        image_list.shape[0], FLAGS.training_data_path))
+        image_list.shape[0], img_path))
     # 索引数组
     index = np.arange(0, image_list.shape[0])
-    real_reader = get_data_reader()
+    real_reader = data_reader.get_data_reader(data_type)
     while True:
         # 随机排序
         np.random.shuffle(index)
@@ -364,13 +319,14 @@ def generator(input_size=512, batch_size=2,
         for i in index:
             try:
                 im_fn = image_list[i]
+                logger.info("读取文件：%s", im_fn)
                 im = cv2.imread(im_fn)
                 if im is None:
                     logger.info("图像没有找到：%s", im_fn)
                     continue
                 h, w, _ = im.shape
                 # 根据图片名找到对应样本标注
-                success,text_polys, text_tags  = real_reader.get_annotation(im_fn,FLAGS.training_text_path)
+                success, text_polys, text_tags = real_reader.get_annotation(im_fn, label_path)
                 if not success:
                     # logger.error("没有解析到文本框：%r ,",im_fn)
                     continue
@@ -382,12 +338,10 @@ def generator(input_size=512, batch_size=2,
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 # TODO debug竟然卡死在这里！
-                # print("resize:",im.shape,rd_scale)
-                im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale,interpolation=cv2.INTER_AREA)
+                im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale, interpolation=cv2.INTER_AREA)
                 text_polys *= rd_scale
                 # random crop a area from image
                 if np.random.rand() < background_ratio:
-                # if np.random.rand() < 0:
                     # crop background 从原图中切出不带文字的图作为负样本
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=True)
                     # 如果切出来的图里有文本则舍弃掉继续
@@ -409,7 +363,6 @@ def generator(input_size=512, batch_size=2,
                     im, text_polys, text_tags = crop_area(im, text_polys, text_tags, crop_background=False)
                     if text_polys.shape[0] == 0:
                         continue
-                    # h, w, _ = im.shape
 
                     # pad the image to the training input size or the longer side of image
                     new_h, new_w, _ = im.shape
@@ -421,14 +374,13 @@ def generator(input_size=512, batch_size=2,
                     new_h, new_w, _ = im.shape
                     resize_h = input_size
                     resize_w = input_size
+                    # TODO 本地这里会卡死
                     im = cv2.resize(im, dsize=(resize_w, resize_h))
                     resize_ratio_3_x = resize_w / float(new_w)
                     resize_ratio_3_y = resize_h / float(new_h)
                     text_polys[:, :, 0] *= resize_ratio_3_x
                     text_polys[:, :, 1] *= resize_ratio_3_y
                     new_h, new_w, _ = im.shape
-                    # plt.imshow(im)
-                    # plt.show()
                     seg_map_per_image, training_mask = generate_seg((new_h, new_w), text_polys, text_tags,
                                                                     image_list[i], scale_ratio)
                     if not len(seg_map_per_image):
@@ -440,12 +392,11 @@ def generator(input_size=512, batch_size=2,
                 # TODO 单通道？
                 images.append(im[..., ::-1].astype(np.float32))
                 image_fns.append(im_fn)
-                # TODO 这是什么意思？
                 seg_maps.append(seg_map_per_image[::4, ::4, :].astype(np.float32))
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
-                    # logger.info("获取样本数：%d", len(images))
+                    logger.debug("获取样本数：%d", len(images))
                     # 返回 图片，文件名，gt，mask
                     yield images, image_fns, seg_maps, training_masks
                     images = []
@@ -464,37 +415,38 @@ def _debug_show(vis, im, seg_map_per_image, training_mask):
     if vis:
         # debug调试用的 原图 6张图 &掩码图
         fig, axs = plt.subplots(3, 3, figsize=(20, 30))
-        axs[0, 0].imshow(im[..., ::-1])
-        axs[0, 0].set_xticks([])
-        axs[0, 0].set_yticks([])
-        axs[0, 1].imshow(seg_map_per_image[..., 0])
-        axs[0, 1].set_xticks([])
-        axs[0, 1].set_yticks([])
-        axs[0, 2].imshow(seg_map_per_image[..., 1])
-        axs[0, 2].set_xticks([])
-        axs[0, 2].set_yticks([])
-        axs[1, 0].imshow(seg_map_per_image[..., 2])
-        axs[1, 0].set_xticks([])
-        axs[1, 0].set_yticks([])
-        axs[1, 1].imshow(seg_map_per_image[..., 3])
-        axs[1, 1].set_xticks([])
-        axs[1, 1].set_yticks([])
-        axs[1, 2].imshow(seg_map_per_image[..., 4])
-        axs[1, 2].set_xticks([])
-        axs[1, 2].set_yticks([])
-        axs[2, 0].imshow(seg_map_per_image[..., 5])
-        axs[2, 0].set_xticks([])
-        axs[2, 0].set_yticks([])
-        axs[2, 1].imshow(training_mask)
-        axs[2, 1].set_xticks([])
-        axs[2, 1].set_yticks([])
-        plt.tight_layout()
-        plt.show()
-        plt.close()
+        # axs[0, 0].imshow(im[..., ::-1])
+        # axs[0, 0].set_xticks([])
+        # axs[0, 0].set_yticks([])
+        # axs[0, 1].imshow(seg_map_per_image[..., 0])
+        # axs[0, 1].set_xticks([])
+        # axs[0, 1].set_yticks([])
+        # axs[0, 2].imshow(seg_map_per_image[..., 1])
+        # axs[0, 2].set_xticks([])
+        # axs[0, 2].set_yticks([])
+        # axs[1, 0].imshow(seg_map_per_image[..., 2])
+        # axs[1, 0].set_xticks([])
+        # axs[1, 0].set_yticks([])
+        # axs[1, 1].imshow(seg_map_per_image[..., 3])
+        # axs[1, 1].set_xticks([])
+        # axs[1, 1].set_yticks([])
+        # axs[1, 2].imshow(seg_map_per_image[..., 4])
+        # axs[1, 2].set_xticks([])
+        # axs[1, 2].set_yticks([])
+        # axs[2, 0].imshow(seg_map_per_image[..., 5])
+        # axs[2, 0].set_xticks([])
+        # axs[2, 0].set_yticks([])
+        # axs[2, 1].imshow(training_mask)
+        # axs[2, 1].set_xticks([])
+        # axs[2, 1].set_yticks([])
+        # plt.tight_layout()
+        # plt.show()
+        # plt.close()
 
 
 def get_batch(num_workers, **kwargs):
     try:
+        # TODO 是否使用多线程
         enqueuer = GeneratorEnqueuer(generator(**kwargs), use_multiprocessing=True)
         enqueuer.start(max_queue_size=24, workers=num_workers)
         generator_output = None
@@ -513,12 +465,11 @@ def get_batch(num_workers, **kwargs):
             enqueuer.stop()
 
 
-
 if __name__ == '__main__':
-    # gen = get_batch(num_workers=1, vis=True)
-    # while True:
-    #     images, image_fns, seg_maps, training_masks = next(gen)
-    #
-    #     logger.debug('done')
-    print("")
-    generator(vis=True)
+    gen = get_batch(num_workers=1, vis=True)
+    while True:
+        images, image_fns, seg_maps, training_masks = next(gen)
+
+        logger.debug('done')
+    # print("")
+    # generator(vis=True)
