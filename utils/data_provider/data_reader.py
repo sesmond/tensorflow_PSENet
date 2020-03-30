@@ -40,7 +40,7 @@ class BaseReader(metaclass=ABCMeta):
         text_polys = []
         text_tags = []
         if not os.path.exists(txt_file):
-            return np.array(text_polys, dtype=np.float32)
+            return np.array(text_polys, dtype=np.float32),None
 
         with open(txt_file, 'r') as f:
             reader = csv.reader(f)
@@ -60,8 +60,9 @@ class BaseReader(metaclass=ABCMeta):
         success = True
 
         if not os.path.exists(txt_fn):
-            # logger.error("文件：%r ,不存在", txt_fn)
+            logger.error("文件：%r ,不存在", txt_fn)
             success = False
+            return success,None,None
         # text_tags 是否是文本 True False
         text_polys, text_tags = self._load_annotation(txt_fn)
         return success, text_polys, text_tags
