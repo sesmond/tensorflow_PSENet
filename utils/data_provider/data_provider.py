@@ -317,7 +317,7 @@ def generator(input_size=512, batch_size=2,
         for i in index:
             try:
                 im_fn = image_list[i]
-                logger.info("读取文件：%s", im_fn)
+                # logger.info("读取文件：%s", im_fn)
                 im = cv2.imread(im_fn)
                 if im is None:
                     logger.info("图像没有找到：%s", im_fn)
