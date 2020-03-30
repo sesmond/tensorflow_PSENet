@@ -376,7 +376,7 @@ def generator(input_size=512, batch_size=2,
                     resize_h = input_size
                     resize_w = input_size
                     # TODO 本地这里会卡死
-                    print(resize_w,resize_h)
+                    # print(resize_w,resize_h)
                     im = cv2.resize(im, dsize=(resize_w, resize_h))
                     resize_ratio_3_x = resize_w / float(new_w)
                     resize_ratio_3_y = resize_h / float(new_h)
@@ -473,6 +473,6 @@ if __name__ == '__main__':
     #     images, image_fns, seg_maps, training_masks = next(gen)
     #     logger.debug('done')
     # # print("")
-    gen  =generator(vis=True)
+    gen  =generator(vis=True,batch_size=10)
     images, image_fns, seg_maps, training_masks = next(gen)
     print("")
