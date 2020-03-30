@@ -407,7 +407,9 @@ def generator(input_size=512, batch_size=2,
                     training_masks = []
             except Exception as e:
                 traceback.print_exc()
-                continue
+                logger.error("file:%s",im_fn)
+                break
+                # continue
 
 
 def _debug_show(vis, im, seg_map_per_image, training_mask):
