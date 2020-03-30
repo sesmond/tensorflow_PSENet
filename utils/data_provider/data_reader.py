@@ -48,6 +48,8 @@ class BaseReader(metaclass=ABCMeta):
                 # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
                 line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
                 # TODO 解析样本行
+                if len(line) < 1:
+                    continue
                 temp_poly, temp_tag = self.load_box(line)
                 text_polys.append(temp_poly)
                 text_tags.append(temp_tag)
@@ -227,4 +229,5 @@ if __name__ == '__main__':
     # print(resuylt)
     # test1()
     hello = get_data_reader("gen")
+    hello.get_annotation("1.jpg","data")
     print(type(hello))
