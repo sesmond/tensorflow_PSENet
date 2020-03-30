@@ -204,10 +204,13 @@ def shrink_poly(poly, r):
         # print("缩小倍数：",r)
         # print("返回结果：",poly_s[0])
         # TODO 可能一个都没有 处理一下
-        shrinked_bbox = np.array(poly_s[0])
+        # shrinked_bbox = np.array(poly_s[0])
         # print("缩放后点个数:",shrinked_bbox.shape[0])
         # TODO 这里如果不是6个怎么办？
-        return [poly_s[0]]
+        if len(poly_s.shape[0])>0:
+            return [poly_s[0]]
+        else:
+            return None
         # TODO 可能前面的坐标转换有问题
         # return [poly]
     except Exception as e:
