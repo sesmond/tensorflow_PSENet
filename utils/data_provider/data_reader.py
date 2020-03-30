@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import os
 import csv
+from utils.utils_tool import logger
 
 
 class BaseReader(metaclass=ABCMeta):
@@ -158,6 +159,7 @@ class GeneralReader(BaseReader):
 
     def get_text_file_name(self, image_name):
         # 替换后缀名
+        logger.info("load gile:%s",image_name)
         txt_name = os.path.basename(image_name).split('.')[0] + '.txt'
         return txt_name
 
@@ -167,6 +169,7 @@ class GeneralReader(BaseReader):
            :param line:
            :return:
         """
+        logger.info("gen line:%r",line)
         label = line[-1]
         x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
         temp_poly = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
