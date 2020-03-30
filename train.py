@@ -87,7 +87,7 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
     :param learning_rate:
     :return:
     """
-    save_model(saver,sess,step,f1_value)
+    # save_model(saver,sess,step,f1_value)
 
     decision = early_stop.decide(f1_value)
 
@@ -100,7 +100,7 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
 
     if decision == EarlyStop.BEST:
         logger.info("新F1值[%f]大于过去最好的F1值，早停计数器重置，并保存模型", f1_value)
-        # save_model(saver,sess,step,f1_value)
+        save_model(saver,sess,step,f1_value)
         # TODO 保存pb
         return False
 
@@ -266,9 +266,6 @@ def main(argv=None):
 
             # 每1000次保存一次模型
             if step % FLAGS.save_checkpoint_steps == 0:
-                # TODO savemodel
-
-
                 # TODO 如果不超过还要保存吗？ 没有记录上次最好数据只是强制保存？ 还有是否设计早停
                 # TODO 验证正确率 !!!!
                 validate_start = time.time()
@@ -279,8 +276,9 @@ def main(argv=None):
                 params['session'] = sess
                 params['input_images'] = input_images
                 params['seg_maps_pred'] = seg_maps_pred
-                f1_value= validate.validate(params)
+                # f1_value = validate.validate(params)
                 # # 更新F1,Recall和Precision
+                f1_value = ml
                 # sess.run([tf.assign(v_f1, f1_value),
                 #           tf.assign(v_recall, recall_value),
                 #           tf.assign(v_precision, precision_value)])

@@ -4,21 +4,17 @@ import time
 import os
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.client import timeline
 from utils.utils_tool import logger, cfg
-import matplotlib.pyplot as plt
+from utils.data_provider import data_provider
+from utils.data_provider import data_reader
 import shapely
 from shapely.geometry import Polygon, MultiPoint  # 多边形
 import random
 
-# --test_data_path =./ data / pred / input / \
-#                      --checkpoint_path =./ model / \
-#                                            --output_dir =./ data / pred / output
 # TODO 验证集数据
 import pred
 
-tf.app.flags.DEFINE_string('validate_img_path', './data/plate_new/test/test_img', '')
-tf.app.flags.DEFINE_string('validate_txt_path', './data/plate_new/test/test_txt', '')
+tf.app.flags.DEFINE_string('validate_data_config', './cfg/validate_data.cfg', '')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -29,14 +25,14 @@ logger.setLevel(cfg.debug)
 """
 
 
-def get_images():
+def get_images(path):
     '''
     find image files in test data path
     :return: list of files found
     '''
     files = []
     exts = ['jpg', 'png', 'jpeg', 'JPG']
-    for parent, dirnames, filenames in os.walk(FLAGS.validate_img_path):
+    for parent, dirnames, filenames in os.walk(path):
         for filename in filenames:
             for ext in exts:
                 if filename.endswith(ext):
@@ -45,38 +41,143 @@ def get_images():
     logger.info('Find {} images'.format(len(files)))
     return files
 
+
+def resize_image(im, max_side_len=1200):
+    '''
+    resize image to a size multiple of 32 which is required by the network
+    :param im: the resized image
+    :param max_side_len: limit of max image size to avoid out of memory in gpu
+    :return: the resized image and the resize ratio
+    '''
+    h, w, _ = im.shape
+
+    resize_w = w
+    resize_h = h
+
+    # limit the max side
+    if max(resize_h, resize_w) > max_side_len:
+        ratio = float(max_side_len) / resize_h if resize_h > resize_w else float(max_side_len) / resize_w
+    else:
+        ratio = 1.
+
+    resize_h = int(resize_h * ratio)
+    resize_w = int(resize_w * ratio)
+
+    resize_h = resize_h if resize_h % 32 == 0 else (resize_h // 32 + 1) * 32
+    resize_w = resize_w if resize_w % 32 == 0 else (resize_w // 32 + 1) * 32
+    logger.info('resize_w:{}, resize_h:{}'.format(resize_w, resize_h))
+    im = cv2.resize(im, (int(resize_w), int(resize_h)))
+
+    ratio_h = resize_h / float(h)
+    ratio_w = resize_w / float(w)
+
+    return im, (ratio_h, ratio_w)
+
+
+def predit_one_img(img, text_polys, text_tags, scale_ratio=np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])):
+    # 色彩转换 BGR 转 RGB
+    im_new = img[:, :, ::-1]
+    im_resized, (ratio_h, ratio_w) = resize_image(im_new)
+    h, w, _ = im_resized.shape
+
+    text_polys[:, :, 0] *= ratio_w
+    text_polys[:, :, 1] *= ratio_h
+
+    seg_map_gt, training_mask = data_provider.generate_seg((h, w), text_polys, text_tags,
+                                                           im_resized, scale_ratio)
+    return im_resized, seg_map_gt, training_mask
+
+
 def validate(params):
-    # 批量验证数据 计算F1 recall等
-    im_fn_list = get_images()
-    #TODO 筛选100个
-    im_fn_list = random.sample(im_fn_list,100)
-    logger.info("随机抽取样本数进行验证：%r",len(im_fn_list))
-    # 计算IOU 大于0.7的就算预测正确
-    cnt_true = 0 # 正确条数 TODO 召回率
-    for im_fn in im_fn_list:
-        logger.debug('image file:{}'.format(im_fn))
-        im = cv2.imread(im_fn)
+    # 参与训练的所有图片名
+    paths = open(FLAGS.validate_data_config, "r").readlines()
+    print("validate paths:", paths)
+    for sel_type in paths:
+        sel_type = sel_type.rstrip('\n')
+        print("sel_type:", sel_type)
+        img_path, label_path, data_type = sel_type.split(" ")
+        im_fn_list = get_images(img_path)
+        logger.info('{} validate images in {}'.format(len(im_fn_list), img_path))
+        # 索引数组
+        real_reader = data_reader.get_data_reader(data_type)
+        # 批量验证数据 计算F1 recall等
+        # TODO 筛选100个
+        im_fn_list = random.sample(im_fn_list, 100)
+        logger.info("随机抽取样本数进行验证：%r", len(im_fn_list))
+        # 计算IOU 大于0.7的就算预测正确
+        cnt_true = 0  # 正确条数 TODO 召回率
+        for im_fn in im_fn_list:
+            logger.debug('image file:{}'.format(im_fn))
+            img = cv2.imread(im_fn)
+            # 根据图片名找到对应样本标注
+            success, text_polys, text_tags = real_reader.get_annotation(im_fn, label_path)
+            if not success:
+                continue
+            im_resized, seg_gt, mask = predit_one_img(img, text_polys, text_tags)
+            seg_gt_maps=[]
+            training_masks=[]
+            seg_gt_maps.append(seg_gt[::4, ::4, :].astype(np.float32))
+            training_masks.append(mask[::4, ::4, np.newaxis].astype(np.float32))
 
-        base_name = os.path.splitext(os.path.basename(im_fn))[0]
-        txt_p = os.path.join(FLAGS.validate_txt_path, base_name+ ".txt")
-        line = open(txt_p).readlines()[0]
-        # line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
-        line = list( map(float,line.split(",")[:-1]))
-        gt_box = np.array(line).reshape(4,2)
-        # gt_box = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+            # resnet预测得到F（S1，...S6）
+            # TODO!!!!
+            seg_pred = pred.predict_by_network(params, im_resized)
 
-        boxes = pred.pred(params, im, im_fn)
-        for box in boxes:
-            # logger.debug('gt_box:%s,box:%s',str(gt_box),str(box))
-            iou = cal_iou(gt_box, box)
-            logger.info("图片 ：%s,iou:%r", os.path.basename(im_fn), iou)
-            if iou > 0.7:
-                logger.info("图片 ：%s,iou:%r ,识别正确！",os.path.basename(im_fn),iou)
+            t_l = loss(np.array(seg_gt_maps), seg_pred, np.array([training_masks]))
+            if t_l < 0.3:
                 cnt_true += 1
-                break
-    logger.info("验证图片总数：%r,验证正确总条数：%r",len(im_fn_list),cnt_true)
-    F1 = cnt_true / len(im_fn_list)
-    return F1
+        logger.info("验证图片总数：%r,验证正确总条数：%r", len(im_fn_list), cnt_true)
+        accuracy = cnt_true / len(im_fn_list)
+        return accuracy
+
+
+def loss(y_true_cls, y_pred_cls,
+         training_mask):
+    """
+    损失函数计算
+    :param y_true_cls: gt
+    :param y_pred_cls: 预测值
+    :param training_mask: 掩码
+    :return:
+    """
+    g1, g2, g3, g4, g5, g6 = tf.split(value=y_true_cls, num_or_size_splits=6, axis=3)
+    s1, s2, s3, s4, s5, s6 = tf.split(value=y_pred_cls, num_or_size_splits=6, axis=3)
+    Gn = [g1, g2, g3, g4, g5, g6]
+    Sn = [s1, s2, s3, s4, s5, s6]
+    # 比较最大的框，计算出Lc，即表示没有进行缩放时候的损失函数
+    _, Lc = dice_coefficient(Gn[5], Sn[5], training_mask=training_mask)
+
+    one = tf.ones_like(Sn[5])
+    zero = tf.zeros_like(Sn[5])
+    W = tf.where(Sn[5] >= 0.5, x=one, y=zero)
+    D = 0
+    for i in range(5):
+        di, _ = dice_coefficient(Gn[i]*W, Sn[i]*W, training_mask=training_mask)
+        D += di
+    #Ls 是缩放后的5个框的损失函数取平均值
+    Ls = 1-D/5.
+    # 原框Lc所占比例
+    lambda_ = 0.7
+    L = lambda_*Lc + (1-lambda_)*Ls
+    return L
+
+
+def dice_coefficient(y_true_cls, y_pred_cls,
+                     training_mask):
+    '''
+    dice loss
+    :param y_true_cls: ground truth
+    :param y_pred_cls: predict
+    :param training_mask:
+    :return:
+    '''
+    eps = 1e-5
+    intersection = tf.reduce_sum(y_true_cls * y_pred_cls * training_mask)
+    union = tf.reduce_sum(y_true_cls * training_mask) + tf.reduce_sum(y_pred_cls * training_mask) + eps
+    dice = 2 * intersection / union
+    loss = 1. - dice
+    # tf.summary.scalar('classification_dice_loss', loss)
+    return dice, loss
 
 
 def cal_iou(box_a, box_b):
@@ -119,5 +220,5 @@ if __name__ == '__main__':
     # tf.app.run()
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     params = pred.initialize()
-    F1 =validate(params)
-    print("正确率：",F1)
+    F1 = validate(params)
+    print("正确率：", F1)

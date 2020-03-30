@@ -49,5 +49,6 @@ python -m train \
 --num_readers=32 \
 --checkpoint_path=model/multi \
 --train_data_config=cfg/train_data.cfg \
+--validate_data_config=cfg/validate_data.cfg \
 >> ./logs/psenet_$Date.log 2>&1 &
 echo "启动完毕,在logs下查看日志！"

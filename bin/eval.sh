@@ -1,5 +1,5 @@
 if [ "$1" = "help" ]; then
-    echo "pred.sh 使用说明：
+    echo "eval.sh 使用说明：
     --evaluate      是否进行评价（你可以光预测，也可以一边预测一边评价）
     --split         是否对小框做出评价，和画到图像上
     --image_dir     被预测的图片目录
@@ -13,8 +13,8 @@ fi
 
 echo "开始检测图片的字块区域....."
 
-python  pred.py \
-    --pred_data_path=./data/pred/test1/ \
-    --checkpoint_path=./model/plate \
+python  eval.py \
+    --test_data_path=./data/pred/test1/ \
+    --checkpoint_path=./model \
     --output_dir=./data/test1 \
     --gpu_list=0 \

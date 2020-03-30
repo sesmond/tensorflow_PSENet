@@ -236,7 +236,7 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
     ignore_poly_mark = []
     for i in range(len(scale_ratio)):
         seg_map = np.zeros((h, w), dtype=np.uint8)
-        # TODO 看下14点坐标是否适配
+        # 兼容多点坐标
         for poly_idx, poly_tag in enumerate(zip(polys, tags)):
             # 对每个多边形操作
             poly = poly_tag[0]
@@ -268,8 +268,6 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
                 # 看看是不是这个填充的问题，先画框试试
                 seg_map = cv2.fillPoly(seg_map, [np.array(shrinked_poly).astype(np.int32)], 1)
                 # seg_map = cv2.drawContours(seg_map, [np.array(shrinked_poly).astype(np.int32)], -1, 1, -1)
-                # plt.imshow(seg_map)
-                # plt.show()
         # (h,w,6) 返回6张图
         seg_maps[..., i] = seg_map
     return seg_maps, training_mask
@@ -375,6 +373,7 @@ def generator(input_size=512, batch_size=2,
                     resize_h = input_size
                     resize_w = input_size
                     # TODO 本地这里会卡死
+                    print(resize_w,resize_h)
                     im = cv2.resize(im, dsize=(resize_w, resize_h))
                     resize_ratio_3_x = resize_w / float(new_w)
                     resize_ratio_3_y = resize_h / float(new_h)
@@ -466,10 +465,11 @@ def get_batch(num_workers, **kwargs):
 
 
 if __name__ == '__main__':
-    gen = get_batch(num_workers=1, vis=True)
-    while True:
-        images, image_fns, seg_maps, training_masks = next(gen)
-
-        logger.debug('done')
-    # print("")
-    # generator(vis=True)
+    # gen = get_batch(num_workers=1, vis=True)
+    # while True:
+    #     images, image_fns, seg_maps, training_masks = next(gen)
+    #     logger.debug('done')
+    # # print("")
+    gen  =generator(vis=True)
+    images, image_fns, seg_maps, training_masks = next(gen)
+    print("")
