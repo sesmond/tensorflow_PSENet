@@ -210,7 +210,8 @@ def shrink_poly(poly, r):
         if len(poly_s)>0:
             return [poly_s[0]]
         else:
-            return None
+            logger.error("shrink err：%r,%r",poly,r)
+            return []
         # TODO 可能前面的坐标转换有问题
         # return [poly]
     except Exception as e:
