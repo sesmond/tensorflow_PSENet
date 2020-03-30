@@ -201,7 +201,7 @@ def test1():
 
 all_reader = {
     'icdar': Icdar2015Reader(),
-    'ctw': Ctw1500Reader(),
+    'ctw1500': Ctw1500Reader(),
     'plate': PlateReader(),
     'gen': GeneralReader()
 }
