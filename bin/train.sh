@@ -45,7 +45,7 @@ python -m train \
 --name=psenet \
 --save_summary_steps=200 \
 --gpu_list=$gpus \
---input_size=512 --batch_size_per_gpu=32 \
+--input_size=512 --batch_size_per_gpu=8 \
 --num_readers=32 \
 --checkpoint_path=model/multi \
 --train_data_config=cfg/train_data.cfg \
