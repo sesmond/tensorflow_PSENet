@@ -46,7 +46,7 @@ python -m train \
 --save_summary_steps=200 \
 --gpu_list=$gpus \
 --input_size=512 --batch_size_per_gpu=8 \
---num_readers=1 \
+--num_readers=20 \
 --checkpoint_path=model/multi \
 --train_data_config=cfg/train_data.cfg \
 --validate_data_config=cfg/validate_data.cfg \
