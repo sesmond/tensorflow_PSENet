@@ -16,10 +16,15 @@ tf.app.flags.DEFINE_string('save_mod_dir', "./model/multi_pb", '')
 FLAGS = tf.app.flags.FLAGS
 
 
+def mk_dir(path):
+    if not os.path.exists(path):
+        print("创建目录：",path)
+        os.makedirs(path)
+
 def convert():
     # 保存转换好的模型目录
     saveModDir = FLAGS.save_mod_dir
-
+    mk_dir(saveModDir)
     # 每次转换都生成一个版本目录
     for i in range(100000, 9999999):
         cur = os.path.join(saveModDir, str(i))
