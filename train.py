@@ -278,7 +278,7 @@ def main(argv=None):
                 params['seg_maps_pred'] = seg_maps_pred
                 # f1_value = validate.validate(params)
                 # # 更新F1,Recall和Precision
-                f1_value = ml
+                f1_value = 1-ml
                 # sess.run([tf.assign(v_f1, f1_value),
                 #           tf.assign(v_recall, recall_value),
                 #           tf.assign(v_precision, precision_value)])
