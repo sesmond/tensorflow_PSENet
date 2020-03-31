@@ -9,9 +9,8 @@ import tensorflow as tf
 from nets import model
 
 tf.app.flags.DEFINE_boolean('debug', True, '')
-tf.app.flags.DEFINE_string('ckpt_mod_path', "./model/plate", '')
-tf.app.flags.DEFINE_string('save_mod_dir', "./model/plate", '')
-tf.app.flags.DEFINE_string('checkpoint_path', "./model/plate", '')
+tf.app.flags.DEFINE_string('ckpt_mod_path', "./model/multi", '')
+tf.app.flags.DEFINE_string('save_mod_dir', "./model/multi_pb", '')
 
 
 FLAGS = tf.app.flags.FLAGS
