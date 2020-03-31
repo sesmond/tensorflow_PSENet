@@ -12,7 +12,7 @@ from utils import plate_utils
 from utils import model_util
 
 tf.app.flags.DEFINE_string('pred_data_path', './data/pred/input', '')
-tf.app.flags.DEFINE_string('pred_gpu_list', '1', '')
+tf.app.flags.DEFINE_string('pred_gpu_list', '', '')
 tf.app.flags.DEFINE_string('pred_model_path', './model/multi_pb', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
