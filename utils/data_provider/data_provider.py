@@ -72,7 +72,8 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     validated_tags = []
     # TODO !!
     for poly, tag in zip(polys, tags):
-        if abs(pyclipper.Area(poly)) < 1:
+        # 文本框面积小于10则不用做训练，太小了不认为是文字
+        if abs(pyclipper.Area(poly)) < FLAGS.min_text_area_size:
             continue
         # clockwise
         if pyclipper.Orientation(poly):

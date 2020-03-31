@@ -39,7 +39,22 @@ if [ "$var" = "console" ]; then
     exit
 fi
 
-echo "生产模式,使用GPU#$gpus"
+
+restore=False
+
+echo "是否恢复原来的模型继续训练?"
+select res in "yes" "no"; do
+  break;
+done
+echo "You have selected $res "
+
+if [ "$res" = "yes" ]; then
+    echo "从之前训练的模型继续训练"
+    restore=True
+fi
+
+
+echo "生产模式,使用GPU#$gpus ,是否恢复模型：$restore"
 nohup \
 python -m train \
 --name=psenet \
@@ -50,5 +65,6 @@ python -m train \
 --checkpoint_path=model/multi \
 --train_data_config=cfg/train_data.cfg \
 --validate_data_config=cfg/validate_data.cfg \
+--restore=$restore \
 >> ./logs/psenet_$Date.log 2>&1 &
 echo "启动完毕,在logs下查看日志！"

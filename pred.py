@@ -263,9 +263,9 @@ def main(argv=None):
                     cv2.polylines(im, [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
                     #TODO 测试转换后的小图
 
-                    warped = plate_utils.four_point_transform(im,box)
-                    img_path = os.path.join(FLAGS.output_dir, "plate_" + os.path.basename(im_fn) + str(i) + ".jpg")
-                    cv2.imwrite(img_path, warped)
+                    # warped = plate_utils.four_point_transform(im,box)
+                    # img_path = os.path.join(FLAGS.output_dir, "plate_" + os.path.basename(im_fn) + str(i) + ".jpg")
+                    # cv2.imwrite(img_path, warped)
 
 
         if not FLAGS.no_write_images:
