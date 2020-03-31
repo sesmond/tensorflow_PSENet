@@ -284,7 +284,7 @@ def main(argv=None):
                 #           tf.assign(v_precision, precision_value)])
                 logger.info("在第%d步，模型评估结束，耗时：%f，f1=%f", step, time.time() - validate_start,
                             f1_value)
-                if is_need_early_stop(early_stop, tl, saver, sess, step, learning_rate):
+                if is_need_early_stop(early_stop, f1_value, saver, sess, step, learning_rate):
                     logger.info("触发早停条件，训练提前终止！")
                     break
 
