@@ -30,6 +30,10 @@ tf.app.flags.DEFINE_integer('max_text_size', 800,
                             'the image according to this')
 tf.app.flags.DEFINE_integer('min_text_area_size', 10,
                             'if the text area size is smaller than this, we ignore it during training')
+tf.app.flags.DEFINE_integer('min_text_width', 2,
+                            '框的左右或上下如果相距小于这个值，认为框太小不参与训练。')
+tf.app.flags.DEFINE_integer('min_text_height', 5,
+                            '框的左右或上下如果相距小于这个值，认为框太小不参与训练。')
 tf.app.flags.DEFINE_float('min_crop_side_ratio', 0.1,
                           'when doing random crop from input image, the'
                           'min length of min(H, W')
@@ -72,7 +76,11 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     validated_tags = []
     # TODO !!
     for poly, tag in zip(polys, tags):
-        # 文本框面积小于10则不用做训练，太小了不认为是文字
+        w_len = max(poly[:, 0]) - min(poly[:, 0])
+        h_len = max(poly[:, 1]) - min(poly[:, 1])
+        if w_len < FLAGS.min_text_width or h_len < FLAGS.min_text_height:
+            continue
+        # 文本框面积小于20则不用做训练，太小了不认为是文字
         if abs(pyclipper.Area(poly)) < FLAGS.min_text_area_size:
             continue
         # clockwise
@@ -211,7 +219,7 @@ def shrink_poly(poly, r):
         if len(poly_s)>0:
             return [poly_s[0]]
         else:
-            logger.error("shrink err：%r,%r",poly,r)
+            # logger.error("shrink poly is too small：%r,%r",poly,r)
             return []
         # TODO 可能前面的坐标转换有问题
         # return [poly]
@@ -285,7 +293,6 @@ def generator(input_size=512, batch_size=2,
               vis=False,
               scale_ratio=np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])):
     '''
-    TODO
     reference from https://github.com/argman/EAST
     :param input_size:
     :param batch_size:
@@ -295,8 +302,6 @@ def generator(input_size=512, batch_size=2,
     :param scale_ratio:ground truth scale ratio
     :return:
     '''
-    # TODO 样本解析为需要的格式
-    # TODO
     # 参与训练的所有图片名
     paths = open(FLAGS.train_data_config, "r").readlines()
     print("paths:", paths)
@@ -336,6 +341,7 @@ def generator(input_size=512, batch_size=2,
                 # 没有标注框
                 if text_polys.shape[0] == 0:
                     continue
+                #TODO resize之后图片会缩小，所以坐标也会相应缩小，在这里校验似乎不太好？
                 text_polys, text_tags = check_and_validate_polys(text_polys, text_tags, (h, w))
                 # 这是要缩放图片吗？是为了放大字体营造样本多样性？
                 # random scale this image
