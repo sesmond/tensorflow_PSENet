@@ -13,7 +13,7 @@ from utils import model_util
 
 tf.app.flags.DEFINE_string('pred_data_path', './data/pred/input', '')
 tf.app.flags.DEFINE_string('pred_gpu_list', '1', '')
-tf.app.flags.DEFINE_string('pred_model_path', './model', '')
+tf.app.flags.DEFINE_string('pred_model_path', './model/multi_pb', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
 
@@ -177,7 +177,8 @@ def predict_by_network(params,img):
 
 # 定义图，并且还原模型，创建session
 def initialize():
-    return  model_util.restore_model("./model/plate/100000")
+    logger.info("恢复模型，路径：%s",FLAGS.pred_model_path)
+    return model_util.restore_model_by_dir(FLAGS.pred_model_path)
 
 
 def pred(params, im, im_fn):
@@ -265,7 +266,6 @@ def main(argv=None):
                     warped = plate_utils.four_point_transform(im,box)
                     img_path = os.path.join(FLAGS.output_dir, "plate_" + os.path.basename(im_fn) + str(i) + ".jpg")
                     cv2.imwrite(img_path, warped)
-
 
 
         if not FLAGS.no_write_images:

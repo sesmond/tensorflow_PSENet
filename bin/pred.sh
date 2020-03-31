@@ -14,7 +14,7 @@ fi
 echo "开始检测图片的字块区域....."
 
 python  pred.py \
-    --pred_data_path=./data/pred/test1/ \
-    --checkpoint_path=./model/plate \
-    --output_dir=./data/test1 \
+    --pred_data_path=./data/pred/input/ \
+    --output_dir=./data/pred/output \
+    --pred_model_path=./model/multi_pb \
     --gpu_list=0 \
