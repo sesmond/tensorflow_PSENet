@@ -34,11 +34,10 @@ class RectProcessor(BaseProcessor):
         points = np.argwhere(mask_res_resized == label_value)
         points = points[:, (1, 0)]
         rect = cv2.minAreaRect(points)
-        logger.info("DECT box:%r,%r",label_value,rect)
-        if abs(pyclipper.Area(rect)) <10:
-            logger.info("面积为：%r",points)
         box = cv2.boxPoints(rect)
-
+        logger.info("DECT box:%r,%r", label_value, box)
+        if abs(pyclipper.Area(np.array(box).astype(np.uint8))) < 10:
+            logger.info("面积为：%r", points)
 
         return True,box
 
