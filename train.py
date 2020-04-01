@@ -96,6 +96,10 @@ def is_need_early_stop(early_stop,f1_value,saver,sess,step,learning_rate):
 
     if decision == EarlyStop.CONTINUE:
         logger.info("新F1值比最好的要小，继续训练...")
+        if early_stop.retry_counter % 10 == 0:
+            # TODO
+            logger.info("避免早停准确度不够，临时存储模型：[%f]", f1_value)
+            save_model(saver, sess, step, f1_value)
         return False
 
     if decision == EarlyStop.BEST:
@@ -278,6 +282,7 @@ def main(argv=None):
                 params['seg_maps_pred'] = seg_maps_pred
                 # f1_value = validate.validate(params)
                 # # 更新F1,Recall和Precision
+
                 f1_value = 1-ml
                 # sess.run([tf.assign(v_f1, f1_value),
                 #           tf.assign(v_recall, recall_value),
