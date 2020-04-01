@@ -312,10 +312,11 @@ def generator(input_size=512, batch_size=2,
         print("sel_type:", sel_type)
         img_path, label_path, data_type = sel_type.split(" ")
         image_list = np.array(get_files(img_path))
-        if len(image_list) <=0:
+        if len(image_list) <= 0:
             continue
         type_list = [data_type]*len(image_list)
-        file_list = list(zip(type_list,image_list))
+        label_path_list = [label_path]*len(image_list)
+        file_list = list(zip(type_list,image_list,label_path_list))
         img_all.extend(file_list)
     img_all = np.array(img_all)
     logger.info('{} training images in {}'.format(
@@ -334,6 +335,7 @@ def generator(input_size=512, batch_size=2,
                 im_info = img_all[i]
                 real_reader = data_reader.get_data_reader(im_info[0])
                 im_fn = im_info[1]
+                txt_path = im_info[2]
                 # logger.info("读取文件：%s", im_fn)
                 im = cv2.imread(im_fn)
                 if im is None:
@@ -341,7 +343,7 @@ def generator(input_size=512, batch_size=2,
                     continue
                 h, w, _ = im.shape
                 # 根据图片名找到对应样本标注
-                success, text_polys, text_tags = real_reader.get_annotation(im_fn, label_path)
+                success, text_polys, text_tags = real_reader.get_annotation(im_fn, txt_path)
                 if not success:
                     # logger.error("没有解析到文本框：%r ,",im_fn)
                     continue
