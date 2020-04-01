@@ -81,7 +81,7 @@ class ParallelogramProcessor(BaseProcessor):
         area, v1, v2, v3, v4, _, _ = image_utils.mep(box)
         box = [v1, v2, v3, v4]
         box = np.array(box)
-        return box
+        return success,box
 
 
 all_reader = {
