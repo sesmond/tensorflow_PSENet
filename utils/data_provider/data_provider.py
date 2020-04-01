@@ -28,11 +28,11 @@ tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
 tf.app.flags.DEFINE_integer('max_text_size', 800,
                             'if the text in the input image is bigger than this, then we resize'
                             'the image according to this')
-tf.app.flags.DEFINE_integer('min_text_area_size', 10,
+tf.app.flags.DEFINE_integer('min_text_area_size', 5,
                             'if the text area size is smaller than this, we ignore it during training')
 tf.app.flags.DEFINE_integer('min_text_width', 2,
                             '框的左右或上下如果相距小于这个值，认为框太小不参与训练。')
-tf.app.flags.DEFINE_integer('min_text_height', 5,
+tf.app.flags.DEFINE_integer('min_text_height', 3,
                             '框的左右或上下如果相距小于这个值，认为框太小不参与训练。')
 tf.app.flags.DEFINE_float('min_crop_side_ratio', 0.1,
                           'when doing random crop from input image, the'
