@@ -132,8 +132,8 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
             continue
         contour = contours[0]
         #TODO 寻找凸包
-        bbox = cv2.convexHull(contour)
-
+        # bbox = cv2.convexHull(contour)
+        bbox = contour
         if bbox.shape[0] <= 2:
             continue
 
