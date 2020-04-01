@@ -11,10 +11,26 @@ if [ "$1" = "help" ]; then
     exit
 fi
 
+
+echo "请选择检测输出的坐标格式：rect-外接矩形,poly-外接多边形,para-外接平行四边形"
+select out_type in "rect" "poly" "para"; do
+  break;
+done
+echo "You have selected $out_type "
+
+
+#echo "输入训练要用的GPU"
+read -p "输入训练要用的GPU:" gpus ;
+
+echo "您选择了GPU $gpus 进行训练"
+
+
 echo "开始检测图片的字块区域....."
 
-python  pred.py \
+python  -m pred.pred \
     --pred_data_path=./data/pred/input/ \
     --output_dir=./data/pred/output \
     --pred_model_path=./model/multi_pb \
-    --gpu_list=0 \
+    --pred_gpu_list=$gpus \
+    --output_type=$out_type
+

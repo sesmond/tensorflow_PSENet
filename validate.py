@@ -12,7 +12,7 @@ from shapely.geometry import Polygon, MultiPoint  # 多边形
 import random
 
 # TODO 验证集数据
-import pred
+import pred.pred as pred
 
 tf.app.flags.DEFINE_string('validate_data_config', './cfg/validate_data.cfg', '')
 
@@ -120,7 +120,7 @@ def validate(params):
             training_masks.append(mask[::4, ::4, np.newaxis].astype(np.float32))
 
             # resnet预测得到F（S1，...S6）
-            # TODO!!!!
+            # TODO!!!! 如果没有pse则不用他的，单独拿出来即可
             seg_pred = pred.predict_by_network(params, im_resized)
 
             t_l = loss(np.array(seg_gt_maps), seg_pred, np.array([training_masks]))

@@ -4,19 +4,20 @@ import time
 import os
 import numpy as np
 import tensorflow as tf
+from utils.utils_tool import logger, cfg
 import matplotlib.pyplot as plt
 
-from utils.utils_tool import logger, cfg
-from pse import pse
-from utils import plate_utils
-from utils import model_util
-
-tf.app.flags.DEFINE_string('pred_data_path', './data/pred/input', '')
-tf.app.flags.DEFINE_string('pred_gpu_list', '', '')
-tf.app.flags.DEFINE_string('pred_model_path', './model/multi_pb', '')
+# --test_data_path =./ data / pred / input / \
+#                      --checkpoint_path =./ model / \
+#                                            --output_dir =./ data / pred / output
+tf.app.flags.DEFINE_string('test_data_path', './data/pred/test1', '')
+tf.app.flags.DEFINE_string('gpu_list', '0', '')
+tf.app.flags.DEFINE_string('checkpoint_path', '/Users/minjianxu/Documents/ocr/psnet/model/model', '')
 tf.app.flags.DEFINE_string('output_dir', './data/pred/output', '')
 tf.app.flags.DEFINE_bool('no_write_images', False, 'do not write images')
 
+from nets import model
+from pred.pse import pse
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -29,7 +30,7 @@ def get_images():
     '''
     files = []
     exts = ['jpg', 'png', 'jpeg', 'JPG']
-    for parent, dirnames, filenames in os.walk(FLAGS.pred_data_path):
+    for parent, dirnames, filenames in os.walk(FLAGS.test_data_path):
         for filename in filenames:
             for ext in exts:
                 if filename.endswith(ext):
@@ -56,6 +57,9 @@ def resize_image(im, max_side_len=1200):
         ratio = float(max_side_len) / resize_h if resize_h > resize_w else float(max_side_len) / resize_w
     else:
         ratio = 1.
+
+    #ratio = float(max_side_len) / resize_h if resize_h > resize_w else float(max_side_len) / resize_w
+
 
     resize_h = int(resize_h * ratio)
     resize_w = int(resize_w * ratio)
@@ -131,34 +135,69 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         if len(contours)<=0:
             continue
         contour = contours[0]
-        #TODO 寻找凸包
-        # bbox = cv2.convexHull(contour)
-        bbox = contour
+        #TODO
+
+        hull = cv2.convexHull(contour)
+
+
+        bbox = hull
         if bbox.shape[0] <= 2:
             continue
-
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
         new_box = bbox.reshape(-1,2) # 转换成2点坐标
-
-        # 切为2点
-        # area, v1, v2, v3, v4, _, _ = plate_utils.mep(new_box)
-        # box = [v1, v2, v3, v4]
-        # box = np.array(box)
-
         # print("new_box and box :\n", new_box,box)
         #TODO 画图并展示
-        # pts = np.array(new_box, np.int32)
-        # pts = pts.reshape(-1,1,2)
+        pts = np.array(new_box, np.int32)
+        pts = pts.reshape(-1,1,2)
         # TODO 划线 多余4点坐标
         # cv2.polylines(mask_res_resized,[pts], True, color=(200, 200,200),
         #               thickness=3)
         # plt.imshow(mask_res_resized)
         # plt.show()
-        boxes.append(new_box)
-        # boxes.append(box)
+
+        # boxes.append(new_box)
+        boxes.append(box)
 
     return np.array(boxes), kernals, timer
+
+def show_score_geo(color_im, kernels, im_res):
+    fig = plt.figure()
+    cmap = plt.cm.hot
+    #
+    ax = fig.add_subplot(241)
+    im = kernels[0]*255
+    ax.imshow(im)
+
+    ax = fig.add_subplot(242)
+    im = kernels[1]*255
+    ax.imshow(im, cmap)
+
+    ax = fig.add_subplot(243)
+    im = kernels[2]*255
+    ax.imshow(im, cmap)
+
+    ax = fig.add_subplot(244)
+    im = kernels[3]*255
+    ax.imshow(im, cmap)
+
+    ax = fig.add_subplot(245)
+    im = kernels[4]*255
+    ax.imshow(im, cmap)
+
+    ax = fig.add_subplot(246)
+    im = kernels[5]*255
+    ax.imshow(im, cmap)
+
+    ax = fig.add_subplot(247)
+    im = color_im
+    ax.imshow(im)
+
+    ax = fig.add_subplot(248)
+    im = im_res
+    ax.imshow(im)
+
+    fig.show()
 
 
 # 调用前向运算来计算
@@ -170,7 +209,7 @@ def predict_by_network(params,img):
     g = params["graph"]
 
     with g.as_default():
-        # logger.debug("通过session预测：%r",img.shape)
+        logger.debug("通过session预测：%r",img.shape)
         seg_maps = session.run(t_seg_maps_pred, feed_dict={t_input_images: [img]})
 
     return seg_maps
@@ -178,8 +217,37 @@ def predict_by_network(params,img):
 
 # 定义图，并且还原模型，创建session
 def initialize():
-    logger.info("恢复模型，路径：%s",FLAGS.pred_model_path)
-    return model_util.restore_model_by_dir(FLAGS.pred_model_path)
+    params = {}
+    g = tf.get_default_graph()
+    with g.as_default():
+        #https://blog.csdn.net/JerryZhang__/article/details/85058005
+        input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
+        global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
+        seg_maps_pred = model.model(input_images, is_training=False)
+
+        variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
+        saver = tf.train.Saver(variable_averages.variables_to_restore())
+        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+        print("checkpoint path:",FLAGS.checkpoint_path)
+        ckpt_state = tf.train.get_checkpoint_state(FLAGS.checkpoint_path)
+        model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
+        logger.info('Restore from {}'.format(model_path))
+        saver.restore(sess, model_path)
+        # #TODO !!!
+        # meta_graph_def = tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], "model/plate/100000")
+        # signature = meta_graph_def.signature_def
+        # in_tensor_name = signature['serving_default'].inputs['input_data'].name
+        # out_tensor_name = signature['serving_default'].outputs['output'].name
+        #
+        # input_images = sess.graph.get_tensor_by_name(in_tensor_name)
+        # seg_maps_pred = sess.graph.get_tensor_by_name(out_tensor_name)
+
+        params["input_images"] = input_images
+        params["seg_maps_pred"] = seg_maps_pred
+        params["session"] = sess
+        params["graph"] = g
+
+    return params
 
 
 def pred(params, im, im_fn):
@@ -195,6 +263,8 @@ def pred(params, im, im_fn):
     start_time = time.time()
     im_resized, (ratio_h, ratio_w) = resize_image(im_new)
     h, w, _ = im_resized.shape
+    # options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE)
+    # run_metadata = tf.RunMetadata()
     timer = {'net': 0, 'pse': 0}
     start = time.time()
     # resnet预测得到F（S1，...S6）
@@ -205,7 +275,9 @@ def pred(params, im, im_fn):
     # print("pse后box：", boxes.shape)
     logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
         im_fn, timer['net'] * 1000, timer['pse'] * 1000))
+    # TODO!!!
     if boxes is not None:
+        # TODO 缩放比例
         # boxes = boxes.reshape((-1, -1, 2))
         h, w, _ = im_new.shape
         # 图片大小还原
@@ -217,12 +289,11 @@ def pred(params, im, im_fn):
             box[:, 1] = np.clip(box[:, 1], 0, h)
     duration = time.time() - start_time
     logger.info('[timing] {}'.format(duration))
-    logger.info("pred box len:{}".format(len(boxes)))
     return boxes
 
 def main(argv=None):
     import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.pred_gpu_list
+    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
 
     try:
         os.makedirs(FLAGS.output_dir)
@@ -232,7 +303,7 @@ def main(argv=None):
 
     params = initialize()
 
-    # 遍历所有图片预测
+    #TODO 遍历所有图片预测
     im_fn_list = get_images()
     for im_fn in im_fn_list:
         logger.debug('image file:{}'.format(im_fn))
@@ -261,16 +332,12 @@ def main(argv=None):
                         box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]))
                     # 划线
                     cv2.polylines(im, [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=2)
-                    #TODO 测试转换后的小图
-
-                    # warped = plate_utils.four_point_transform(im,box)
-                    # img_path = os.path.join(FLAGS.output_dir, "plate_" + os.path.basename(im_fn) + str(i) + ".jpg")
-                    # cv2.imwrite(img_path, warped)
-
 
         if not FLAGS.no_write_images:
             img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
             cv2.imwrite(img_path, im)
+        # show_score_geo(im_resized, kernels, im)
+
 
 
 if __name__ == '__main__':
