@@ -33,8 +33,8 @@ class RectProcessor(BaseProcessor):
         # (y,x)
         points = np.argwhere(mask_res_resized == label_value)
         points = points[:, (1, 0)]
-        logger.info("DECT box:%r,%r",label_value,points)
         rect = cv2.minAreaRect(points)
+        logger.info("DECT box:%r,%r",label_value,rect)
         box = cv2.boxPoints(rect)
 
         return True,box
