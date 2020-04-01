@@ -140,22 +140,23 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
         # bbox = bbox * scale
         bbox = bbox.astype('int32')
         new_box = bbox.reshape(-1,2) # 转换成2点坐标
-        area, v1, v2, v3, v4, _, _ = plate_utils.mep(new_box)
-        box = [v1, v2, v3, v4]
-        box = np.array(box)
+
+        # 切为2点
+        # area, v1, v2, v3, v4, _, _ = plate_utils.mep(new_box)
+        # box = [v1, v2, v3, v4]
+        # box = np.array(box)
 
         # print("new_box and box :\n", new_box,box)
         #TODO 画图并展示
-        pts = np.array(new_box, np.int32)
-        pts = pts.reshape(-1,1,2)
+        # pts = np.array(new_box, np.int32)
+        # pts = pts.reshape(-1,1,2)
         # TODO 划线 多余4点坐标
         # cv2.polylines(mask_res_resized,[pts], True, color=(200, 200,200),
         #               thickness=3)
         # plt.imshow(mask_res_resized)
         # plt.show()
-
-        # boxes.append(new_box)
-        boxes.append(box)
+        boxes.append(new_box)
+        # boxes.append(box)
 
     return np.array(boxes), kernals, timer
 
@@ -204,7 +205,6 @@ def pred(params, im, im_fn):
     # print("pse后box：", boxes.shape)
     logger.info('{} : net {:.0f}ms, pse {:.0f}ms'.format(
         im_fn, timer['net'] * 1000, timer['pse'] * 1000))
-    # TODO!!!
     if boxes is not None:
         # boxes = boxes.reshape((-1, -1, 2))
         h, w, _ = im_new.shape
