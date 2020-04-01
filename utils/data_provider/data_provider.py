@@ -289,7 +289,7 @@ def generate_seg(im_size, polys, tags, image_name, scale_ratio):
 # TODO batch size =32
 def generator(input_size=512, batch_size=2,
               background_ratio=3. / 8,
-              random_scale=np.array([0.125, 0.25, 0.5, 1, 2.0, 3.0]),
+              random_scale=np.array([0.25, 0.5, 1, 2.0, 3.0]), #0.125,
               vis=False,
               scale_ratio=np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])):
     '''
