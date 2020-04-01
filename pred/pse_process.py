@@ -9,7 +9,7 @@ import csv
 from utils.utils_tool import logger
 import cv2
 from  pred import image_utils
-
+import pyclipper
 
 
 class BaseProcessor(metaclass=ABCMeta):
@@ -35,7 +35,10 @@ class RectProcessor(BaseProcessor):
         points = points[:, (1, 0)]
         rect = cv2.minAreaRect(points)
         logger.info("DECT box:%r,%r",label_value,rect)
+        if abs(pyclipper.Area(rect)) <10:
+            logger.info("面积为：%r",points)
         box = cv2.boxPoints(rect)
+
 
         return True,box
 
