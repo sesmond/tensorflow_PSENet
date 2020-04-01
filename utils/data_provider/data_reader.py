@@ -162,7 +162,8 @@ class GeneralReader(BaseReader):
 
     def get_text_file_name(self, image_name):
         # 替换后缀名
-        txt_name = os.path.basename(image_name).split('.')[0] + '.txt'
+        base_name = os.path.basename(image_name)
+        txt_name = os.path.splitext(base_name)[0] + '.txt'
         return txt_name
 
     def load_box(self, line):
