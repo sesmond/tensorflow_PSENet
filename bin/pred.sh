@@ -19,10 +19,9 @@ done
 echo "You have selected $out_type "
 
 
-#echo "输入训练要用的GPU"
-read -p "输入训练要用的GPU:" gpus ;
+read -p "输入预测要用的GPU:" gpus ;
 
-echo "您选择了GPU $gpus 进行训练"
+echo "您选择了GPU $gpus 进行预测"
 
 
 echo "开始检测图片的字块区域....."

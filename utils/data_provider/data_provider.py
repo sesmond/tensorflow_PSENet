@@ -305,18 +305,23 @@ def generator(input_size=512, batch_size=2,
     # 参与训练的所有图片名
     paths = open(FLAGS.train_data_config, "r").readlines()
     print("paths:", paths)
-    sel_type = random.choice(paths)
-    sel_type = sel_type.rstrip('\n')
-    print("sel_type:", sel_type)
-    img_path, label_path, data_type = sel_type.split(" ")
-
-    image_list = np.array(get_files(img_path))
-
+    img_all = []
+    for sel_type in paths:
+        # sel_type = random.choice(paths)
+        sel_type = sel_type.rstrip('\n')
+        print("sel_type:", sel_type)
+        img_path, label_path, data_type = sel_type.split(" ")
+        image_list = np.array(get_files(img_path))
+        if len(image_list) <=0:
+            continue
+        type_list = [data_type]*len(image_list)
+        file_list = list(zip(type_list,image_list))
+        img_all.extend(file_list)
+    img_all = np.array(img_all)
     logger.info('{} training images in {}'.format(
-        image_list.shape[0], img_path))
+        img_all.shape[0], img_path))
     # 索引数组
-    index = np.arange(0, image_list.shape[0])
-    real_reader = data_reader.get_data_reader(data_type)
+    index = np.arange(0, img_all.shape[0])
     while True:
         # 随机排序
         np.random.shuffle(index)
@@ -326,7 +331,9 @@ def generator(input_size=512, batch_size=2,
         training_masks = []
         for i in index:
             try:
-                im_fn = image_list[i]
+                im_info = img_all[i]
+                real_reader = data_reader.get_data_reader(im_info[0])
+                im_fn = im_info[1]
                 # logger.info("读取文件：%s", im_fn)
                 im = cv2.imread(im_fn)
                 if im is None:
@@ -392,7 +399,7 @@ def generator(input_size=512, batch_size=2,
                     text_polys[:, :, 1] *= resize_ratio_3_y
                     new_h, new_w, _ = im.shape
                     seg_map_per_image, training_mask = generate_seg((new_h, new_w), text_polys, text_tags,
-                                                                    image_list[i], scale_ratio)
+                                                                    im_fn, scale_ratio)
                     if not len(seg_map_per_image):
                         logger.info("len(seg_map)==0 image: %d " % i)
                         continue
@@ -482,6 +489,6 @@ if __name__ == '__main__':
     #     images, image_fns, seg_maps, training_masks = next(gen)
     #     logger.debug('done')
     # # print("")
-    gen  =generator(vis=True,batch_size=10)
+    gen  =generator(vis=False,batch_size=10)
     images, image_fns, seg_maps, training_masks = next(gen)
     print("")
