@@ -203,8 +203,8 @@ def main(argv=None):
                 for i in range(len(boxes)):
                     # to avoid submitting errors
                     box = boxes[i]
-                    print("预测box：", box)
-                    # TODO
+                    # print("预测box：", box)
+                    # TODO 舍弃掉太小的框？
                     # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
                     #     continue
 
