@@ -71,13 +71,13 @@ def resize_image(im, max_side_len=1200):
     return im, (ratio_h, ratio_w)
 
 
-def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh=0.9, ratio=1):
+def detect(seg_maps, timer, image_w, image_h, min_area_thresh=3, seg_map_thresh=0.9, ratio=1):
     '''
     restore text boxes from score map and geo map
     :param seg_maps:
     :param timer:
-    :param min_area_thresh:
-    :param seg_map_thresh: threshhold for seg map
+    :param min_area_thresh: 检测框最小面积（即最小像素个数）
+    :param seg_map_thresh: threshhold for seg map 二值化阈值
     :param ratio: compute each seg map thresh
     :return:
     '''
@@ -92,7 +92,7 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=10, seg_map_thresh
     zero = np.zeros_like(seg_maps[..., 0], dtype=np.uint8)
     thresh = seg_map_thresh
     for i in range(seg_maps.shape[-1] - 1, -1, -1):
-        # TODO 根据阈值（0.9）二分为0，1
+        # TODO 根据阈值（0.9）二分为0，1 ，这个阈值有问题吗？
         kernal = np.where(seg_maps[..., i] > thresh, one, zero)
         kernals.append(kernal)
         thresh = seg_map_thresh * ratio
