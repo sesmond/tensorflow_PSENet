@@ -39,7 +39,7 @@ def get_images():
     return files
 
 
-def resize_image(im, max_side_len=1200):
+def resize_image(im, max_side_len=2400):
     '''
     resize image to a size multiple of 32 which is required by the network
     :param im: the resized image
@@ -75,6 +75,8 @@ def detect(seg_maps, timer, image_w, image_h, min_area_thresh=0, seg_map_thresh=
     '''
     restore text boxes from score map and geo map
     :param seg_maps:
+    :param image_w:
+    :param image_h:
     :param timer:
     :param min_area_thresh: 检测框最小面积（即最小像素个数）
     :param seg_map_thresh: threshhold for seg map 二值化阈值
@@ -124,7 +126,7 @@ def predict_by_network(params, img):
     with g.as_default():
         # logger.debug("通过session预测：%r",img.shape)
         seg_maps = session.run(t_seg_maps_pred, feed_dict={t_input_images: [img]})
-
+    # 预测出来和原图是4倍关系
     return seg_maps
 
 
