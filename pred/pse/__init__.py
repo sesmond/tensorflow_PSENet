@@ -14,6 +14,13 @@ def pse(kernals, min_area=5):
     :param min_area: 保留的最小面积
     :return:
     '''
+    kernal_num = len(kernals)
+    # TODO !!! 顺序
+    new_kernals = []
+    for i in range(kernal_num):
+        new_kernals.append(kernals[kernal_num - i - 1])
+    kernals = new_kernals
+
     # TODO 算了一下这里的kernal是从大到小的，顺序应该反了
     # return pse_py.pse(kernals,min_area)
     # TODO 找不到指定模块？
