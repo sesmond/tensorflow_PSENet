@@ -21,11 +21,6 @@ read -p "输入训练要用的GPU:" gpus ;
 
 echo "您选择了GPU $gpus 进行训练"
 
-conda env list
-read -p "选择要切换的虚拟环境：" venv ;
-echo "您选择了 $venv "
-conda activate $venv
-
 
 
 if [ "$var" = "console" ]; then
