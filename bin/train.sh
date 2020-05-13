@@ -21,6 +21,12 @@ read -p "输入训练要用的GPU:" gpus ;
 
 echo "您选择了GPU $gpus 进行训练"
 
+conda env list
+read -p "选择要切换的虚拟环境：" venv ;
+echo "您选择了 $venv "
+conda activate $venv
+
+
 
 if [ "$var" = "console" ]; then
     echo "debug模式"
@@ -62,7 +68,7 @@ python -m train \
 --gpu_list=$gpus \
 --input_size=512 --batch_size_per_gpu=8 \
 --num_readers=20 \
---checkpoint_path=model/multi \
+--checkpoint_path=model/table \
 --train_data_config=cfg/train_data.cfg \
 --validate_data_config=cfg/validate_data.cfg \
 --restore=$restore \
