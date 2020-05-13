@@ -48,7 +48,7 @@ def get_files(data_path):
     :return:
     """
     files = []
-    exts = ['jpg', 'png', 'jpeg', 'JPG']
+    exts = ['jpg', 'png', 'jpeg', 'JPG','bmp']
     for ext in exts:
         # glob.glob 得到所有文件名
         # 一层 2层子目录都取出来
